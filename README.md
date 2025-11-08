@@ -138,6 +138,7 @@ gctx update <message> [--content <text>]  # Update context
 gctx append <message> [--text <text>]     # Append to context
 gctx history [--limit N] [--starting-after SHA]  # View history
 gctx snapshot <sha>          # View context at specific commit
+gctx search <keyword...> [--limit N]      # Search history by keywords
 ```
 
 Examples:
@@ -249,6 +250,7 @@ Once configured, GitHub Copilot will have access to these tools:
 - `mcp_gctx-server_append_to_context` - Append to context
 - `mcp_gctx-server_get_context_history` - View history
 - `mcp_gctx-server_get_snapshot` - Get historical context
+- `mcp_gctx-server_search_context_history` - Search history by keywords
 
 And this resource:
 - `gctx://usage-guide` - Usage guide for gctx tools
@@ -338,6 +340,25 @@ Retrieve context from a specific commit.
   "content": "...",
   "commit_message": "...",
   "timestamp": "2025-11-08T12:00:00",
+  "error": ""
+}
+```
+
+#### `search_context_history(keywords: list[str], limit: int = 100)`
+Search commit history for keywords in messages or content.
+
+**Returns:**
+```json
+{
+  "success": true,
+  "commits": [
+    {
+      "sha": "abc123...",
+      "message": "Add python implementation",
+      "timestamp": "2025-11-08T12:00:00"
+    }
+  ],
+  "total_matches": 5,
   "error": ""
 }
 ```

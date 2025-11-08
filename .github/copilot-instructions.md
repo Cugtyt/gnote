@@ -18,9 +18,11 @@ You can actively offload the conversation to gctx-managed context, allowing for 
 **For historical reference:**
 - Use `get_context_history(limit, starting_after)` to view past commits
 - Use `get_snapshot(commit_sha)` to retrieve content from specific commits
+- Use `search_context_history(keywords, limit)` to search commits by keywords in messages or content
 - Review history before compression to avoid losing important information
 
 **Best practices:**
 - Always check `success` field; handle errors via `error` field
-- Use descriptive commit messages for easier history navigation
+- Use descriptive commit messages for easier history navigation and searchability
 - Consider compression when `token_pressure_percentage` > 0.8
+- Use search to quickly find relevant past context without reviewing all history
