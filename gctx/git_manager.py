@@ -40,6 +40,14 @@ class GitContextManager:
         self.logger = get_logger(self.branch)
         self.logger.info(f"Initialized GitContextManager for branch: {self.branch}")
 
+    def __del__(self) -> None:
+        """Cleanup Git repository resources."""
+        if hasattr(self, 'repo') and self.repo is not None:
+            try:
+                self.repo.close()
+            except Exception:
+                pass
+
     def _initialize_repo(self) -> Repo:
         """Initialize or open the Git repository.
 
@@ -58,9 +66,12 @@ class GitContextManager:
                 repo = Repo.init(self.repo_path)
 
                 # Set git config
-                with repo.config_writer() as config:
+                config = repo.config_writer()
+                try:
                     config.set_value("user", "name", "gctx-agent")
                     config.set_value("user", "email", "agent@gctx.local")
+                finally:
+                    config.release()
 
                 # Create initial context file
                 if not self.context_file_path.exists():
@@ -219,12 +230,14 @@ class GitContextManager:
         try:
             commit = self.repo.commit(commit_sha)
             blob = commit.tree / self.context_file
-            content = blob.data_stream.read().decode("utf-8")
+            content: str = blob.data_stream.read().decode("utf-8")
+            commit_message: str = str(commit.message).strip()
+            timestamp: str = datetime.fromtimestamp(commit.committed_date).isoformat()
 
             return {
                 "content": content,
-                "commit_message": commit.message.strip(),
-                "timestamp": datetime.fromtimestamp(commit.committed_date).isoformat(),
+                "commit_message": commit_message,
+                "timestamp": timestamp,
             }
         except Exception as e:
             raise RuntimeError(f"Failed to get snapshot for commit {commit_sha}: {e}") from e

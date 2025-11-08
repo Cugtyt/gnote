@@ -46,6 +46,28 @@ uv run gctx branch create agent1
 uv run gctx branch checkout agent1
 ```
 
+## Examples & Testing
+
+We provide comprehensive test scripts to help you understand and verify gctx functionality:
+
+### Test MCP Tools
+```bash
+# Run MCP tools test (Python)
+uv run python examples/test_mcp.py
+```
+
+This script demonstrates all 5 MCP tools with a complete workflow including token pressure monitoring and compression simulation.
+
+### Test CLI Commands
+```bash
+# Run CLI test (PowerShell)
+pwsh examples/test_cli.ps1
+```
+
+This script walks through all 20 CLI commands with colored output showing initialization, configuration, context operations, branch management, and multi-branch isolation.
+
+See [`examples/README.md`](examples/README.md) for detailed documentation.
+
 ## Architecture
 
 ### Directory Structure
