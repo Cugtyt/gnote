@@ -113,31 +113,24 @@ def setup_mcp(
 
     USAGE_GUIDE = """Follow this guidance to use gctx context management tools effectively.
 
-Actively use these tools to manage context across sessions.
+Actively use these tools to manage context across conversations with the user.
 These tools provide Git-based context versioning with token pressure monitoring.
 You can actively offload the conversation to gctx-managed context, allowing for better
 organization and compression when token limits are approached.
 
-**At session start:**
-- Use `read_context()` to restore context state and check token metrics
-- Monitor `token_pressure_percentage` to decide when compression is needed
-
-**During work:**
-- Use `append_to_context(text, message)` for incremental updates (logs, findings, progress)
-- Use `update_context(new_context, message)` when compressing or restructuring context
-- Check `success` field in all results before using other fields
-
-**For historical reference:**
-- Use `get_context_history(limit, starting_after)` to view past commits
-- Use `get_snapshot(commit_sha)` to retrieve content from specific commits
-- Use `search_context_history(keywords, limit)` to search commits by keywords
-- Review history before compression to avoid losing important information
+**Core operations:**
+- `read_context()` - Restore project knowledge and check token metrics
+- `append_to_context(text, message)` - Incrementally add findings, decisions, or progress
+- `update_context(new_context, message)` - Compress, restructure, or replace entire context
+- `get_context_history(limit, starting_after)` - View past commits with pagination
+- `get_snapshot(commit_sha)` - Retrieve content from specific commits
+- `search_context_history(keywords, limit)` - Search commits by keywords
 
 **Best practices:**
 - Always check `success` field; handle errors via `error` field
 - Use descriptive commit messages for easier history navigation and searchability
 - Consider compression when `token_pressure_percentage` > 0.8
-- Use search to quickly find relevant past context without reviewing all history
+- Review history before compression to avoid losing important information
 """
 
     @mcp.resource("gctx://usage-guide")
