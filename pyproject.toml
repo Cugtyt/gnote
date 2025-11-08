@@ -1,7 +1,40 @@
 [project]
 name = "gctx"
 version = "0.1.0"
-description = "Add your description here"
+description = "Simplified Git-based context management for LLM agents via MCP"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "gitpython>=3.1.45",
+    "mcp>=1.21.0",
+    "pydantic>=2.12.4",
+]
+
+[project.scripts]
+gctx = "gctx.cli:main"
+gctx-server = "gctx.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ANN", # flake8-annotations (type hints)
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+]
