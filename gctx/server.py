@@ -5,7 +5,7 @@ import argparse
 from gctx.config import GctxConfig
 from gctx.config_manager import ConfigManager
 from gctx.logger import get_logger
-from gctx.tools import setup_tools
+from gctx.tools import setup_mcp
 
 
 def main() -> None:
@@ -65,7 +65,7 @@ Config Override Examples:
     logger.info(f"Active config: {config.model_dump_json()}")
 
     try:
-        mcp_server = setup_tools(args.branch, config_override=config)
+        mcp_server = setup_mcp(args.branch, config_override=config)
         logger.info("MCP server initialized successfully")
 
         mcp_server.run()

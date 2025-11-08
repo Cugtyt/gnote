@@ -262,10 +262,12 @@ Read current context with token metrics.
 **Returns:**
 ```json
 {
+  "success": true,
   "content": "...",
   "token_count": 1250,
   "token_limit": 8000,
-  "token_pressure_percentage": 0.1563
+  "token_pressure_percentage": 0.1563,
+  "error": ""
 }
 ```
 
@@ -286,7 +288,17 @@ Replace context with new content.
 #### `append_to_context(text: str, commit_message: str)`
 Append text to context.
 
-**Returns:** Same structure as `update_context`
+**Returns:**
+```json
+{
+  "success": true,
+  "commit_sha": "def456...",
+  "new_token_count": 1650,
+  "token_delta": 400,
+  "token_pressure_percentage": 0.2063,
+  "error": ""
+}
+```
 
 #### `get_context_history(limit: int = 10, starting_after: str | None = None)`
 Get paginated commit history.
@@ -294,6 +306,7 @@ Get paginated commit history.
 **Returns:**
 ```json
 {
+  "success": true,
   "commits": [
     {
       "sha": "abc123...",
@@ -302,7 +315,8 @@ Get paginated commit history.
     }
   ],
   "total_commits": 50,
-  "has_more": true
+  "has_more": true,
+  "error": ""
 }
 ```
 
@@ -312,9 +326,11 @@ Retrieve context from a specific commit.
 **Returns:**
 ```json
 {
+  "success": true,
   "content": "...",
   "commit_message": "...",
-  "timestamp": "2025-11-08T12:00:00"
+  "timestamp": "2025-11-08T12:00:00",
+  "error": ""
 }
 ```
 

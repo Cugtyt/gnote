@@ -1,7 +1,7 @@
 """Git-based context management."""
 
+from dataclasses import dataclass
 from datetime import datetime
-from typing import TypedDict
 
 from git import Repo
 from git.exc import InvalidGitRepositoryError
@@ -10,7 +10,8 @@ from gctx.config_manager import ConfigManager
 from gctx.logger import get_logger
 
 
-class CommitInfo(TypedDict):
+@dataclass(frozen=True)
+class CommitInfo:
     """Type for commit information."""
 
     sha: str
@@ -18,12 +19,22 @@ class CommitInfo(TypedDict):
     timestamp: str
 
 
-class HistoryResult(TypedDict):
+@dataclass(frozen=True)
+class HistoryResult:
     """Type for history result."""
 
     commits: list[CommitInfo]
     total_commits: int
     has_more: bool
+
+
+@dataclass(frozen=True)
+class SnapshotResult:
+    """Type for snapshot result."""
+
+    content: str
+    commit_message: str
+    timestamp: str
 
 
 class GitContextManager:
@@ -221,7 +232,10 @@ class GitContextManager:
             starting_after: SHA of commit to start after, or None for most recent
 
         Returns:
-            Dictionary with commits list, total_commits, and has_more flag
+            HistoryResult with commits list, total_commits, has_more flag
+
+        Raises:
+            RuntimeError: If getting history fails
         """
         self.logger.info(
             f"Getting history for branch '{self.branch}' "
@@ -234,36 +248,38 @@ class GitContextManager:
             if start.parents:
                 commits_iter = self.repo.iter_commits(start.parents[0], max_count=limit)
             else:
-                return {"commits": [], "total_commits": total, "has_more": False}
+                return HistoryResult(commits=[], total_commits=total, has_more=False)
         else:
             commits_iter = self.repo.iter_commits(self.branch, max_count=limit)
 
-        commits = []
+        commits: list[CommitInfo] = []
         for c in commits_iter:
+            msg = c.message
+            commit_message = str(msg).strip()
             commits.append(
-                {
-                    "sha": c.hexsha,
-                    "message": c.message.strip(),
-                    "timestamp": datetime.fromtimestamp(c.committed_date).isoformat(),
-                }
+                CommitInfo(
+                    sha=c.hexsha,
+                    message=commit_message,
+                    timestamp=datetime.fromtimestamp(c.committed_date).isoformat(),
+                )
             )
 
         has_more = False
         if commits:
-            last = self.repo.commit(commits[-1]["sha"])
+            last = self.repo.commit(commits[-1].sha)
             has_more = len(last.parents) > 0
 
         self.logger.info(f"Retrieved {len(commits)} commits (total={total}, has_more={has_more})")
-        return {"commits": commits, "total_commits": total, "has_more": has_more}
+        return HistoryResult(commits=commits, total_commits=total, has_more=has_more)
 
-    def get_snapshot(self, commit_sha: str) -> dict[str, str]:
+    def get_snapshot(self, commit_sha: str) -> SnapshotResult:
         """Get context content from specific commit.
 
         Args:
             commit_sha: Git commit SHA to retrieve
 
         Returns:
-            Dictionary with content, commit_message, and timestamp
+            SnapshotResult with content, commit_message, and timestamp
 
         Raises:
             RuntimeError: If commit doesn't exist or file not found
@@ -277,11 +293,11 @@ class GitContextManager:
             timestamp: str = datetime.fromtimestamp(commit.committed_date).isoformat()
 
             self.logger.info(f"Retrieved snapshot: {len(content)} characters")
-            return {
-                "content": content,
-                "commit_message": commit_message,
-                "timestamp": timestamp,
-            }
+            return SnapshotResult(
+                content=content,
+                commit_message=commit_message,
+                timestamp=timestamp,
+            )
         except Exception as e:
             self.logger.error(f"Failed to get snapshot: {e}")
             raise RuntimeError(f"Failed to get snapshot for commit {commit_sha}: {e}") from e

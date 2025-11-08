@@ -254,17 +254,17 @@ def cmd_history(args: argparse.Namespace) -> None:
         manager = GitContextManager(branch)
         result = manager.get_history(limit, starting_after)
 
-        print(f"# History ({len(result['commits'])} of {result['total_commits']} commits)")
+        print(f"# History ({len(result.commits)} of {result.total_commits} commits)")
         print()
 
-        for commit in result["commits"]:
-            sha_short = commit["sha"][:8]
-            print(f"{sha_short} - {commit['timestamp']}")
-            print(f"  {commit['message']}")
+        for commit in result.commits:
+            sha_short = commit.sha[:8]
+            print(f"{sha_short} - {commit.timestamp}")
+            print(f"  {commit.message}")
             print()
 
-        if result["has_more"]:
-            last_sha = result["commits"][-1]["sha"]
+        if result.has_more:
+            last_sha = result.commits[-1].sha
             print(f"# More commits available. Use: --starting-after {last_sha}")
 
     except Exception as e:
@@ -285,10 +285,10 @@ def cmd_snapshot(args: argparse.Namespace) -> None:
         snapshot = manager.get_snapshot(sha)
 
         print(f"# Snapshot: {sha}")
-        print(f"# Message: {snapshot['commit_message']}")
-        print(f"# Time: {snapshot['timestamp']}")
+        print(f"# Message: {snapshot.commit_message}")
+        print(f"# Time: {snapshot.timestamp}")
         print()
-        print(snapshot["content"])
+        print(snapshot.content)
 
     except Exception as e:
         print(f"✗ Failed to get snapshot: {e}", file=sys.stderr)
