@@ -2,12 +2,13 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from types import TracebackType
 
 from git import Repo
 from git.exc import InvalidGitRepositoryError
 
 from gctx.config_manager import ConfigManager
-from gctx.logger import get_logger
+from gctx.logger import BranchLogger
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,12 @@ class SnapshotResult:
 
 
 class GitContextManager:
-    """Manages context file within a Git repository."""
+    """Manages context file within a Git repository.
+
+    Can be used as a context manager for proper resource cleanup:
+        with GitContextManager("branch") as manager:
+            manager.write_context("content", "message")
+    """
 
     def __init__(self, branch: str) -> None:
         """Initialize Git context manager.
@@ -50,7 +56,7 @@ class GitContextManager:
             RuntimeError: If repository initialization fails
         """
         self.branch = branch
-        self.logger = get_logger(self.branch)
+        self.logger = BranchLogger(self.branch)
 
         self.repo_path = ConfigManager.REPO_PATH
         self.context_file = ConfigManager.CONTEXT_FILE
@@ -63,13 +69,23 @@ class GitContextManager:
 
         self.logger.info(f"Initialized GitContextManager for branch: {self.branch}")
 
-    def __del__(self) -> None:
-        """Cleanup Git repository resources."""
-        if hasattr(self, "repo") and self.repo is not None:
-            try:
-                self.repo.close()
-            except Exception:
-                pass
+    def __enter__(self) -> "GitContextManager":
+        """Context manager entry."""
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        """Context manager exit - cleanup resources."""
+        self.logger.close()
+
+        try:
+            self.repo.close()
+        except Exception:
+            pass
 
     def _initialize_repo(self) -> Repo:
         """Initialize or open the Git repository.

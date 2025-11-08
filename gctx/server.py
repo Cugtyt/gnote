@@ -4,7 +4,7 @@ import argparse
 
 from gctx.config import GctxConfig
 from gctx.config_manager import ConfigManager
-from gctx.logger import get_logger
+from gctx.logger import BranchLogger
 from gctx.mcp import setup_mcp
 
 
@@ -35,44 +35,44 @@ Config Override Examples:
     )
     args = parser.parse_args()
 
-    logger = get_logger(args.branch)
-    logger.info("=" * 60)
-    logger.info(f"Starting gctx-server on branch: {args.branch}")
+    with BranchLogger(args.branch) as logger:
+        logger.info("=" * 60)
+        logger.info(f"Starting gctx-server on branch: {args.branch}")
 
-    config = ConfigManager.load_for_branch(args.branch)
+        config = ConfigManager.load_for_branch(args.branch)
 
-    if args.config_override:
-        overrides = {}
-        for override in args.config_override:
-            if "=" not in override:
-                logger.error(f"Invalid override format: {override} (expected key=value)")
-                raise ValueError(f"Invalid override format: {override}")
-            key, value = override.split("=", 1)
-            key = key.strip()
-            value = value.strip()
+        if args.config_override:
+            overrides = {}
+            for override in args.config_override:
+                if "=" not in override:
+                    logger.error(f"Invalid override format: {override} (expected key=value)")
+                    raise ValueError(f"Invalid override format: {override}")
+                key, value = override.split("=", 1)
+                key = key.strip()
+                value = value.strip()
 
-            if key == "token_limit":
-                overrides[key] = int(value)
-            elif key == "token_approach":
-                overrides[key] = value
-            else:
-                logger.warning(f"Unknown config key: {key}")
-                continue
+                if key == "token_limit":
+                    overrides[key] = int(value)
+                elif key == "token_approach":
+                    overrides[key] = value
+                else:
+                    logger.warning(f"Unknown config key: {key}")
+                    continue
 
-        config = GctxConfig(**{**config.model_dump(), **overrides})
-        logger.info(f"Config overrides applied: {overrides}")
+            config = GctxConfig(**{**config.model_dump(), **overrides})
+            logger.info(f"Config overrides applied: {overrides}")
 
-    logger.info(f"Active config: {config.model_dump_json()}")
+        logger.info(f"Active config: {config.model_dump_json()}")
 
-    try:
-        mcp_server = setup_mcp(args.branch, config_override=config)
-        logger.info("MCP server initialized successfully")
+        try:
+            mcp_server = setup_mcp(args.branch, config_override=config)
+            logger.info("MCP server initialized successfully")
 
-        mcp_server.run()
+            mcp_server.run()
 
-    except Exception as e:
-        logger.error(f"Server failed to start: {e}", exc_info=True)
-        raise
+        except Exception as e:
+            logger.error(f"Server failed to start: {e}")
+            raise
 
 
 if __name__ == "__main__":

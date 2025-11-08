@@ -8,7 +8,7 @@ from mcp.server.fastmcp import FastMCP
 from gctx.config import GctxConfig
 from gctx.config_manager import ConfigManager
 from gctx.git_manager import CommitInfo, GitContextManager
-from gctx.logger import get_logger
+from gctx.logger import BranchLogger
 from gctx.token_counter import TokenCounter
 
 
@@ -80,20 +80,19 @@ def setup_mcp(branch: str, config_override: GctxConfig | None = None) -> FastMCP
     Returns:
         Configured FastMCP server instance
     """
-    logger = get_logger(branch)
-    logger.info(f"Setting up MCP tools for branch: {branch}")
+    with BranchLogger(branch) as logger:
+        logger.info(f"Setting up MCP tools for branch: {branch}")
 
-    if config_override:
-        config = config_override
-        logger.info(f"Using config override: {config.model_dump_json()}")
-    else:
-        config = ConfigManager.load_for_branch(branch)
-        logger.info(f"Config loaded: {config.model_dump_json()}")
+        if config_override:
+            config = config_override
+            logger.info(f"Using config override: {config.model_dump_json()}")
+        else:
+            config = ConfigManager.load_for_branch(branch)
+            logger.info(f"Config loaded: {config.model_dump_json()}")
 
-    manager = GitContextManager(branch)
+        logger.info("MCP tools setup complete")
+
     counter = TokenCounter(config.token_approach)
-
-    logger.info("MCP tools setup complete")
 
     mcp = FastMCP("gctx")
 
@@ -144,28 +143,30 @@ organization and compression when token limits are approached.
             - token_pressure_percentage (float): Percentage of limit used (0.0-1.0)
             - error (str): Error message if failed
         """
-        logger.info("Tool called: read_context")
+        with BranchLogger(branch) as logger:
+            logger.info("Tool called: read_context")
 
-        try:
-            content = await asyncio.to_thread(manager.read_context)
-            token_count = counter.count(content)
-            pressure = counter.calculate_pressure(token_count, config.token_limit)
+            try:
+                with GitContextManager(branch) as manager:
+                    content = await asyncio.to_thread(manager.read_context)
+                    token_count = counter.count(content)
+                    pressure = counter.calculate_pressure(token_count, config.token_limit)
 
-            logger.info(f"Read context: {token_count} tokens")
+                    logger.info(f"Read context: {token_count} tokens")
 
-            return ReadContextResult(
-                success=True,
-                content=content,
-                token_count=token_count,
-                token_limit=config.token_limit,
-                token_pressure_percentage=pressure["token_pressure_percentage"],
-            )
-        except Exception as e:
-            logger.error(f"Failed to read context: {e}")
-            return ReadContextResult(
-                success=False,
-                error=str(e),
-            )
+                    return ReadContextResult(
+                        success=True,
+                        content=content,
+                        token_count=token_count,
+                        token_limit=config.token_limit,
+                        token_pressure_percentage=pressure["token_pressure_percentage"],
+                    )
+            except Exception as e:
+                logger.error(f"Failed to read context: {e}")
+                return ReadContextResult(
+                    success=False,
+                    error=str(e),
+                )
 
     @mcp.tool()
     async def update_context(new_context: str, commit_message: str) -> UpdateContextResult:
@@ -193,34 +194,38 @@ organization and compression when token limits are approached.
             - token_pressure_percentage (float): New pressure percentage
             - error (str): Error message if failed
         """
-        logger.info(f"Tool called: update_context - {commit_message}")
+        with BranchLogger(branch) as logger:
+            logger.info(f"Tool called: update_context - {commit_message}")
 
-        try:
-            old_content = await asyncio.to_thread(manager.read_context)
-            old_token_count = counter.count(old_content)
+            try:
+                with GitContextManager(branch) as manager:
+                    old_content = await asyncio.to_thread(manager.read_context)
+                    old_token_count = counter.count(old_content)
 
-            commit_sha = await asyncio.to_thread(manager.write_context, new_context, commit_message)
+                    commit_sha = await asyncio.to_thread(
+                        manager.write_context, new_context, commit_message
+                    )
 
-            new_token_count = counter.count(new_context)
-            token_delta = new_token_count - old_token_count
+                    new_token_count = counter.count(new_context)
+                    token_delta = new_token_count - old_token_count
 
-            pressure = counter.calculate_pressure(new_token_count, config.token_limit)
+                    pressure = counter.calculate_pressure(new_token_count, config.token_limit)
 
-            logger.info(f"Updated context: {new_token_count} tokens (delta: {token_delta})")
+                    logger.info(f"Updated context: {new_token_count} tokens (delta: {token_delta})")
 
-            return UpdateContextResult(
-                success=True,
-                commit_sha=commit_sha,
-                new_token_count=new_token_count,
-                token_delta=token_delta,
-                token_pressure_percentage=pressure["token_pressure_percentage"],
-            )
-        except Exception as e:
-            logger.error(f"Failed to update context: {e}")
-            return UpdateContextResult(
-                success=False,
-                error=str(e),
-            )
+                    return UpdateContextResult(
+                        success=True,
+                        commit_sha=commit_sha,
+                        new_token_count=new_token_count,
+                        token_delta=token_delta,
+                        token_pressure_percentage=pressure["token_pressure_percentage"],
+                    )
+            except Exception as e:
+                logger.error(f"Failed to update context: {e}")
+                return UpdateContextResult(
+                    success=False,
+                    error=str(e),
+                )
 
     @mcp.tool()
     async def append_to_context(text: str, commit_message: str) -> AppendContextResult:
@@ -248,35 +253,42 @@ organization and compression when token limits are approached.
             - token_pressure_percentage (float): New pressure percentage
             - error (str): Error message if failed
         """
-        logger.info(f"Tool called: append_to_context - {commit_message}")
+        with BranchLogger(branch) as logger:
+            logger.info(f"Tool called: append_to_context - {commit_message}")
 
-        try:
-            old_content = await asyncio.to_thread(manager.read_context)
-            old_token_count = counter.count(old_content)
+            try:
+                with GitContextManager(branch) as manager:
+                    old_content = await asyncio.to_thread(manager.read_context)
+                    old_token_count = counter.count(old_content)
 
-            commit_sha = await asyncio.to_thread(manager.append_context, text, commit_message)
+                    commit_sha = await asyncio.to_thread(
+                        manager.append_context, text, commit_message
+                    )
 
-            new_content = await asyncio.to_thread(manager.read_context)
-            new_token_count = counter.count(new_content)
-            token_delta = new_token_count - old_token_count
+                    new_content = await asyncio.to_thread(manager.read_context)
+                    new_token_count = counter.count(new_content)
+                    token_delta = new_token_count - old_token_count
 
-            pressure = counter.calculate_pressure(new_token_count, config.token_limit)
+                    pressure = counter.calculate_pressure(new_token_count, config.token_limit)
 
-            logger.info(f"Appended to context: {new_token_count} tokens (delta: +{token_delta})")
+                    log_msg = (
+                        f"Appended to context: {new_token_count} tokens (delta: +{token_delta})"
+                    )
+                    logger.info(log_msg)
 
-            return AppendContextResult(
-                success=True,
-                commit_sha=commit_sha,
-                new_token_count=new_token_count,
-                token_delta=token_delta,
-                token_pressure_percentage=pressure["token_pressure_percentage"],
-            )
-        except Exception as e:
-            logger.error(f"Failed to append to context: {e}")
-            return AppendContextResult(
-                success=False,
-                error=str(e),
-            )
+                    return AppendContextResult(
+                        success=True,
+                        commit_sha=commit_sha,
+                        new_token_count=new_token_count,
+                        token_delta=token_delta,
+                        token_pressure_percentage=pressure["token_pressure_percentage"],
+                    )
+            except Exception as e:
+                logger.error(f"Failed to append to context: {e}")
+                return AppendContextResult(
+                    success=False,
+                    error=str(e),
+                )
 
     @mcp.tool()
     async def get_context_history(
@@ -309,27 +321,29 @@ organization and compression when token limits are approached.
             - has_more (bool): True if more commits exist beyond this page
             - error (str): Error message if failed
         """
-        logger.info(f"Tool called: get_context_history (limit={limit})")
+        with BranchLogger(branch) as logger:
+            logger.info(f"Tool called: get_context_history (limit={limit})")
 
-        try:
-            if limit <= 0:
-                raise ValueError("limit must be positive")
+            try:
+                if limit <= 0:
+                    raise ValueError("limit must be positive")
 
-            result = await asyncio.to_thread(manager.get_history, limit, starting_after)
-            logger.info(f"Retrieved {len(result.commits)} commits")
+                with GitContextManager(branch) as manager:
+                    result = await asyncio.to_thread(manager.get_history, limit, starting_after)
+                    logger.info(f"Retrieved {len(result.commits)} commits")
 
-            return HistoryResult(
-                success=True,
-                commits=result.commits,
-                total_commits=result.total_commits,
-                has_more=result.has_more,
-            )
-        except Exception as e:
-            logger.error(f"Failed to get history: {e}")
-            return HistoryResult(
-                success=False,
-                error=str(e),
-            )
+                    return HistoryResult(
+                        success=True,
+                        commits=result.commits,
+                        total_commits=result.total_commits,
+                        has_more=result.has_more,
+                    )
+            except Exception as e:
+                logger.error(f"Failed to get history: {e}")
+                return HistoryResult(
+                    success=False,
+                    error=str(e),
+                )
 
     @mcp.tool()
     async def get_snapshot(commit_sha: str) -> SnapshotResult:
@@ -357,27 +371,29 @@ organization and compression when token limits are approached.
             - timestamp (str): ISO format timestamp when commit was made
             - error (str): Error message if success is False
         """
-        logger.info(f"Tool called: get_snapshot (sha={commit_sha[:8]})")
-        try:
-            if not commit_sha or len(commit_sha) < 7:
-                raise ValueError("commit_sha must be at least 7 characters")
-            if not all(c in "0123456789abcdefABCDEF" for c in commit_sha):
-                raise ValueError("commit_sha must be a valid hexadecimal hash")
+        with BranchLogger(branch) as logger:
+            logger.info(f"Tool called: get_snapshot (sha={commit_sha[:8]})")
+            try:
+                if not commit_sha or len(commit_sha) < 7:
+                    raise ValueError("commit_sha must be at least 7 characters")
+                if not all(c in "0123456789abcdefABCDEF" for c in commit_sha):
+                    raise ValueError("commit_sha must be a valid hexadecimal hash")
 
-            result = await asyncio.to_thread(manager.get_snapshot, commit_sha)
-            logger.info(f"Retrieved snapshot from {commit_sha[:8]}")
+                with GitContextManager(branch) as manager:
+                    result = await asyncio.to_thread(manager.get_snapshot, commit_sha)
+                    logger.info(f"Retrieved snapshot from {commit_sha[:8]}")
 
-            return SnapshotResult(
-                success=True,
-                content=result.content,
-                commit_message=result.commit_message,
-                timestamp=result.timestamp,
-            )
-        except Exception as e:
-            logger.error(f"Failed to get snapshot: {e}")
-            return SnapshotResult(
-                success=False,
-                error=str(e),
-            )
+                    return SnapshotResult(
+                        success=True,
+                        content=result.content,
+                        commit_message=result.commit_message,
+                        timestamp=result.timestamp,
+                    )
+            except Exception as e:
+                logger.error(f"Failed to get snapshot: {e}")
+                return SnapshotResult(
+                    success=False,
+                    error=str(e),
+                )
 
     return mcp

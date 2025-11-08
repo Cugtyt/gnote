@@ -146,9 +146,9 @@ def cmd_branch_create(args: argparse.Namespace) -> None:
         from_branch: str | None = args.from_branch
 
         current = GitContextManager.get_active_branch()
-        manager = GitContextManager(current)
-        sha = manager.create_branch(name, from_branch)
-        print(f"✓ Created branch '{name}' at {sha[:8]}")
+        with GitContextManager(current) as manager:
+            sha = manager.create_branch(name, from_branch)
+            print(f"✓ Created branch '{name}' at {sha[:8]}")
 
     except Exception as e:
         print(f"✗ Failed to create branch: {e}", file=sys.stderr)
@@ -178,9 +178,9 @@ def cmd_read(args: argparse.Namespace) -> None:
     """
     try:
         branch = GitContextManager.get_active_branch()
-        manager = GitContextManager(branch)
-        content = manager.read_context()
-        print(content)
+        with GitContextManager(branch) as manager:
+            content = manager.read_context()
+            print(content)
 
     except Exception as e:
         print(f"✗ Failed to read context: {e}", file=sys.stderr)
@@ -198,16 +198,15 @@ def cmd_update(args: argparse.Namespace) -> None:
         content_arg: str | None = args.content
 
         branch = GitContextManager.get_active_branch()
-        manager = GitContextManager(branch)
+        with GitContextManager(branch) as manager:
+            if content_arg:
+                content = content_arg
+            else:
+                print("Enter new context (Ctrl+D or Ctrl+Z to finish):")
+                content = sys.stdin.read()
 
-        if content_arg:
-            content = content_arg
-        else:
-            print("Enter new context (Ctrl+D or Ctrl+Z to finish):")
-            content = sys.stdin.read()
-
-        sha = manager.write_context(content, message)
-        print(f"✓ Updated context: {sha[:8]}")
+            sha = manager.write_context(content, message)
+            print(f"✓ Updated context: {sha[:8]}")
 
     except Exception as e:
         print(f"✗ Failed to update context: {e}", file=sys.stderr)
@@ -225,16 +224,15 @@ def cmd_append(args: argparse.Namespace) -> None:
         text_arg: str | None = args.text
 
         branch = GitContextManager.get_active_branch()
-        manager = GitContextManager(branch)
+        with GitContextManager(branch) as manager:
+            if text_arg:
+                text = text_arg
+            else:
+                print("Enter text to append (Ctrl+D or Ctrl+Z to finish):")
+                text = sys.stdin.read()
 
-        if text_arg:
-            text = text_arg
-        else:
-            print("Enter text to append (Ctrl+D or Ctrl+Z to finish):")
-            text = sys.stdin.read()
-
-        sha = manager.append_context(text, message)
-        print(f"✓ Appended to context: {sha[:8]}")
+            sha = manager.append_context(text, message)
+            print(f"✓ Appended to context: {sha[:8]}")
 
     except Exception as e:
         print(f"✗ Failed to append to context: {e}", file=sys.stderr)
@@ -251,21 +249,21 @@ def cmd_history(args: argparse.Namespace) -> None:
         starting_after: str | None = args.starting_after
 
         branch = GitContextManager.get_active_branch()
-        manager = GitContextManager(branch)
-        result = manager.get_history(limit, starting_after)
+        with GitContextManager(branch) as manager:
+            result = manager.get_history(limit, starting_after)
 
-        print(f"# History ({len(result.commits)} of {result.total_commits} commits)")
-        print()
-
-        for commit in result.commits:
-            sha_short = commit.sha[:8]
-            print(f"{sha_short} - {commit.timestamp}")
-            print(f"  {commit.message}")
+            print(f"# History ({len(result.commits)} of {result.total_commits} commits)")
             print()
 
-        if result.has_more:
-            last_sha = result.commits[-1].sha
-            print(f"# More commits available. Use: --starting-after {last_sha}")
+            for commit in result.commits:
+                sha_short = commit.sha[:8]
+                print(f"{sha_short} - {commit.timestamp}")
+                print(f"  {commit.message}")
+                print()
+
+            if result.has_more:
+                last_sha = result.commits[-1].sha
+                print(f"# More commits available. Use: --starting-after {last_sha}")
 
     except Exception as e:
         print(f"✗ Failed to get history: {e}", file=sys.stderr)
@@ -281,14 +279,14 @@ def cmd_snapshot(args: argparse.Namespace) -> None:
         sha: str = args.sha
 
         branch = GitContextManager.get_active_branch()
-        manager = GitContextManager(branch)
-        snapshot = manager.get_snapshot(sha)
+        with GitContextManager(branch) as manager:
+            snapshot = manager.get_snapshot(sha)
 
-        print(f"# Snapshot: {sha}")
-        print(f"# Message: {snapshot.commit_message}")
-        print(f"# Time: {snapshot.timestamp}")
-        print()
-        print(snapshot.content)
+            print(f"# Snapshot: {sha}")
+            print(f"# Message: {snapshot.commit_message}")
+            print(f"# Time: {snapshot.timestamp}")
+            print()
+            print(snapshot.content)
 
     except Exception as e:
         print(f"✗ Failed to get snapshot: {e}", file=sys.stderr)

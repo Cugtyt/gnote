@@ -2,34 +2,60 @@
 
 import logging
 from pathlib import Path
+from typing import Self
 
 
-def get_logger(branch: str) -> logging.Logger:
-    """Get or create logger for specific branch.
+class BranchLogger:
+    """Logger manager for branch-specific logging with proper cleanup."""
 
-    Logs to ~/.gctx/logs/{branch}.log
+    def __init__(self, branch: str) -> None:
+        """Initialize logger for specific branch.
 
-    Args:
-        branch: Branch name
+        Args:
+            branch: Branch name
+        """
+        self.branch = branch
+        self.logger_name = f"gctx.{branch}"
+        self.logger = logging.getLogger(self.logger_name)
 
-    Returns:
-        Configured logger instance
-    """
-    gctx_home = Path.home() / ".gctx"
-    log_path = gctx_home / "logs" / f"{branch}.log"
-    log_path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.logger.handlers:
+            gctx_home = Path.home() / ".gctx"
+            log_path = gctx_home / "logs" / f"{branch}.log"
+            log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    logger_name = f"gctx.{branch}"
-    logger = logging.getLogger(logger_name)
+            self.logger.setLevel(logging.INFO)
 
-    if logger.handlers:
-        return logger
+            handler = logging.FileHandler(log_path, encoding="utf-8")
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
-    logger.setLevel(logging.INFO)
+    def __enter__(self) -> Self:
+        """Context manager entry."""
+        return self
 
-    handler = logging.FileHandler(log_path, encoding="utf-8")
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    def __exit__(self, *args: object) -> None:
+        """Context manager exit - close all handlers."""
+        self.close()
 
-    return logger
+    def close(self) -> None:
+        """Close and remove all handlers."""
+        for handler in self.logger.handlers[:]:
+            handler.close()
+            self.logger.removeHandler(handler)
+
+    def info(self, message: str) -> None:
+        """Log info message."""
+        self.logger.info(message)
+
+    def warning(self, message: str) -> None:
+        """Log warning message."""
+        self.logger.warning(message)
+
+    def error(self, message: str) -> None:
+        """Log error message."""
+        self.logger.error(message)
+
+    def debug(self, message: str) -> None:
+        """Log debug message."""
+        self.logger.debug(message)
