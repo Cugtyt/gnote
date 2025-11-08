@@ -7,11 +7,10 @@ from mcp.server.fastmcp import FastMCP
 
 from gctx.config import GctxConfig
 from gctx.config_manager import ConfigManager
-from gctx.git_manager import GitContextManager
+from gctx.git_manager import GitContextManager, HistoryResult
 from gctx.logger import get_logger
 from gctx.token_counter import TokenCounter
 
-# Global state (initialized by setup_tools)
 manager: GitContextManager | None = None
 counter: TokenCounter | None = None
 config: GctxConfig | None = None
@@ -34,14 +33,11 @@ def setup_tools(branch: str) -> FastMCP:
     logger = get_logger(branch)
     logger.info(f"Setting up MCP tools for branch: {branch}")
 
-    # Load config for branch
     config = ConfigManager.load_for_branch(branch)
     logger.info(f"Config loaded: {config.model_dump_json()}")
 
-    # Initialize git manager
     manager = GitContextManager(branch)
 
-    # Initialize token counter
     counter = TokenCounter(config.token_approach)
 
     logger.info("MCP tools setup complete")
@@ -131,9 +127,7 @@ async def update_context(
 
 
 @mcp.tool()
-async def append_to_context(
-    text: str, commit_message: str
-) -> dict[str, bool | str | int | float]:
+async def append_to_context(text: str, commit_message: str) -> dict[str, bool | str | int | float]:
     """Append text to the end of the context file and commit the change.
 
     Use this tool to add new information to context without rewriting everything.
@@ -185,9 +179,7 @@ async def append_to_context(
 
 
 @mcp.tool()
-async def get_context_history(
-    limit: int = 10, starting_after: str | None = None
-) -> dict[str, list | int | bool]:
+async def get_context_history(limit: int = 10, starting_after: str | None = None) -> HistoryResult:
     """Retrieve paginated commit history of context changes.
 
     Use this tool to explore past context states and find relevant historical

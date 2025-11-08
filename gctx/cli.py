@@ -39,9 +39,7 @@ def cmd_config_show(args: argparse.Namespace) -> None:
     CLI: gctx config
     """
     try:
-        manager = GitContextManager()
-        branch = manager.get_current_branch()
-
+        branch = GitContextManager.get_active_branch()
         config = ConfigManager.load_for_branch(branch)
 
         print(f"# Configuration for branch: {branch}")
@@ -58,13 +56,9 @@ def cmd_config_set(args: argparse.Namespace) -> None:
     CLI: gctx config set <key> <value>
     """
     try:
-        manager = GitContextManager()
-        branch = manager.get_current_branch()
-
-        # Get existing branch overrides
+        branch = GitContextManager.get_active_branch()
         overrides = ConfigManager.get_branch_override(branch)
 
-        # Parse value based on key
         value: str | int
         if args.key == "token_limit":
             try:
@@ -104,8 +98,8 @@ def cmd_branch_show(args: argparse.Namespace) -> None:
     CLI: gctx branch
     """
     try:
-        manager = GitContextManager()
-        print(manager.get_current_branch())
+        branch = GitContextManager.get_active_branch()
+        print(branch)
     except Exception as e:
         print(f"✗ Failed to get current branch: {e}", file=sys.stderr)
         sys.exit(1)
@@ -117,9 +111,9 @@ def cmd_branch_list(args: argparse.Namespace) -> None:
     CLI: gctx branch list
     """
     try:
-        manager = GitContextManager()
+        current = GitContextManager.get_active_branch()
+        manager = GitContextManager(current)
         branches = manager.list_branches()
-        current = manager.get_current_branch()
 
         for branch in branches:
             marker = "*" if branch == current else " "
@@ -136,7 +130,8 @@ def cmd_branch_create(args: argparse.Namespace) -> None:
     CLI: gctx branch create <name> [--from <branch>]
     """
     try:
-        manager = GitContextManager()
+        current = GitContextManager.get_active_branch()
+        manager = GitContextManager(current)
         sha = manager.create_branch(args.name, args.from_branch)
         print(f"✓ Created branch '{args.name}' at {sha[:8]}")
 
@@ -151,7 +146,8 @@ def cmd_branch_checkout(args: argparse.Namespace) -> None:
     CLI: gctx branch checkout <name>
     """
     try:
-        manager = GitContextManager()
+        current = GitContextManager.get_active_branch()
+        manager = GitContextManager(current)
         manager.checkout_branch(args.name)
         print(f"✓ Switched to branch '{args.name}'")
 
@@ -166,7 +162,8 @@ def cmd_read(args: argparse.Namespace) -> None:
     CLI: gctx read
     """
     try:
-        manager = GitContextManager()
+        branch = GitContextManager.get_active_branch()
+        manager = GitContextManager(branch)
         content = manager.read_context()
         print(content)
 
@@ -182,9 +179,9 @@ def cmd_update(args: argparse.Namespace) -> None:
           gctx update <message>  (reads from stdin)
     """
     try:
-        manager = GitContextManager()
+        branch = GitContextManager.get_active_branch()
+        manager = GitContextManager(branch)
 
-        # Get content from --content flag or stdin
         if args.content:
             content = args.content
         else:
@@ -206,9 +203,9 @@ def cmd_append(args: argparse.Namespace) -> None:
           gctx append <message>  (reads from stdin)
     """
     try:
-        manager = GitContextManager()
+        branch = GitContextManager.get_active_branch()
+        manager = GitContextManager(branch)
 
-        # Get text from --text flag or stdin
         if args.text:
             text = args.text
         else:
@@ -229,7 +226,8 @@ def cmd_history(args: argparse.Namespace) -> None:
     CLI: gctx history [--limit N] [--starting-after SHA]
     """
     try:
-        manager = GitContextManager()
+        branch = GitContextManager.get_active_branch()
+        manager = GitContextManager(branch)
         result = manager.get_history(args.limit, args.starting_after)
 
         print(f"# History ({len(result['commits'])} of {result['total_commits']} commits)")
@@ -256,7 +254,8 @@ def cmd_snapshot(args: argparse.Namespace) -> None:
     CLI: gctx snapshot <sha>
     """
     try:
-        manager = GitContextManager()
+        branch = GitContextManager.get_active_branch()
+        manager = GitContextManager(branch)
         snapshot = manager.get_snapshot(args.sha)
 
         print(f"# Snapshot: {args.sha}")
@@ -277,13 +276,11 @@ def cmd_validate(args: argparse.Namespace) -> None:
     """
     errors = []
 
-    # Check if gctx home exists
     if not ConfigManager.GCTX_HOME.exists():
         errors.append("~/.gctx directory does not exist. Run 'gctx init' first.")
     else:
         print("✓ ~/.gctx directory exists")
 
-        # Check config
         config_path = ConfigManager.GCTX_HOME / "config.json"
         if not config_path.exists():
             errors.append("~/.gctx/config.json does not exist")
@@ -296,19 +293,16 @@ def cmd_validate(args: argparse.Namespace) -> None:
             except json.JSONDecodeError:
                 errors.append("~/.gctx/config.json is not valid JSON")
 
-        # Check repo
         if not ConfigManager.REPO_PATH.exists():
             errors.append("~/.gctx/repo does not exist")
         else:
             print("✓ ~/.gctx/repo exists")
             try:
-                manager = GitContextManager()
-                branch = manager.get_current_branch()
+                branch = GitContextManager.get_active_branch()
                 print(f"✓ Current branch: {branch}")
             except Exception as e:
                 errors.append(f"Git repository error: {e}")
 
-        # Check subdirectories
         for subdir in ["configs", "logs"]:
             path = ConfigManager.GCTX_HOME / subdir
             if not path.exists():

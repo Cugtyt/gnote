@@ -11,9 +11,7 @@ def main() -> None:
 
     CLI: gctx-server --branch <name>
     """
-    parser = argparse.ArgumentParser(
-        description="gctx MCP server - Git-based context management"
-    )
+    parser = argparse.ArgumentParser(description="gctx MCP server - Git-based context management")
     parser.add_argument(
         "--branch",
         required=True,
@@ -21,17 +19,14 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Get logger for this branch
     logger = get_logger(args.branch)
     logger.info("=" * 60)
     logger.info(f"Starting gctx-server on branch: {args.branch}")
 
     try:
-        # Setup MCP tools
         mcp_server = setup_tools(args.branch)
         logger.info("MCP server initialized successfully")
 
-        # Run the server
         mcp_server.run()
 
     except Exception as e:

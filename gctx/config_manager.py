@@ -29,18 +29,15 @@ class ConfigManager:
         global_path = cls.GCTX_HOME / "config.json"
         branch_path = cls.GCTX_HOME / "configs" / f"{branch}.json"
 
-        # Load global config or use defaults
         if global_path.exists():
             with open(global_path, encoding="utf-8") as f:
                 global_data = json.load(f)
         else:
             global_data = {}
 
-        # Load branch override if exists
         if branch_path.exists():
             with open(branch_path, encoding="utf-8") as f:
                 branch_data = json.load(f)
-                # Merge: branch overrides global
                 global_data.update(branch_data)
 
         # Create config from merged data, or use defaults if empty

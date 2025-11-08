@@ -1,6 +1,7 @@
 """Git-based context management."""
 
 from datetime import datetime
+from typing import TypedDict
 
 from git import Repo
 from git.exc import InvalidGitRepositoryError
@@ -9,14 +10,30 @@ from gctx.config_manager import ConfigManager
 from gctx.logger import get_logger
 
 
+class CommitInfo(TypedDict):
+    """Type for commit information."""
+
+    sha: str
+    message: str
+    timestamp: str
+
+
+class HistoryResult(TypedDict):
+    """Type for history result."""
+
+    commits: list[CommitInfo]
+    total_commits: int
+    has_more: bool
+
+
 class GitContextManager:
     """Manages context file within a Git repository."""
 
-    def __init__(self, branch: str | None = None) -> None:
+    def __init__(self, branch: str) -> None:
         """Initialize Git context manager.
 
         Args:
-            branch: Branch to operate on. If None, uses current active branch.
+            branch: Branch to operate on (required).
 
         Raises:
             RuntimeError: If repository initialization fails
@@ -25,24 +42,20 @@ class GitContextManager:
         self.context_file = ConfigManager.CONTEXT_FILE
         self.context_file_path = self.repo_path / self.context_file
 
-        # Initialize or open repo
         self.repo = self._initialize_repo()
 
-        # Determine branch
-        if branch is None:
-            self.branch = self.repo.active_branch.name
-        else:
-            self.branch = branch
-            # Create branch if doesn't exist
-            if branch not in [ref.name for ref in self.repo.heads]:
-                self._create_branch_from_main(branch)
+        self.branch = branch
+        if branch not in [ref.name for ref in self.repo.heads]:
+            self._create_branch_from_main(branch)
+        if self.repo.active_branch.name != branch:
+            self.repo.heads[branch].checkout()
 
         self.logger = get_logger(self.branch)
         self.logger.info(f"Initialized GitContextManager for branch: {self.branch}")
 
     def __del__(self) -> None:
         """Cleanup Git repository resources."""
-        if hasattr(self, 'repo') and self.repo is not None:
+        if hasattr(self, "repo") and self.repo is not None:
             try:
                 self.repo.close()
             except Exception:
@@ -65,7 +78,6 @@ class GitContextManager:
             try:
                 repo = Repo.init(self.repo_path)
 
-                # Set git config
                 config = repo.config_writer()
                 try:
                     config.set_value("user", "name", "gctx-agent")
@@ -73,11 +85,9 @@ class GitContextManager:
                 finally:
                     config.release()
 
-                # Create initial context file
                 if not self.context_file_path.exists():
                     self.context_file_path.touch()
 
-                # Initial commit
                 repo.index.add([self.context_file])
                 repo.index.commit("Initialize gctx context")
             except Exception as e:
@@ -97,6 +107,24 @@ class GitContextManager:
             source = self.repo.active_branch
 
         self.repo.create_head(branch, source)
+
+    @staticmethod
+    def get_active_branch() -> str:
+        """Get the currently active branch name without initializing a manager.
+
+        Returns:
+            Active branch name
+
+        Raises:
+            RuntimeError: If repository doesn't exist or can't be accessed
+        """
+        repo_path = ConfigManager.REPO_PATH
+        try:
+            repo = Repo(repo_path)
+            return repo.active_branch.name
+        except (InvalidGitRepositoryError, Exception) as e:
+            msg = f"Failed to get active branch: {e}"
+            raise RuntimeError(msg) from e
 
     def get_current_branch(self) -> str:
         """Get current active branch name.
@@ -171,15 +199,12 @@ class GitContextManager:
         self.logger.info(f"Appending to context: {message}")
         current = self.read_context()
 
-        # Add separator if needed
         separator = "\n" if current and not current.endswith("\n") else ""
         new_content = current + separator + text
 
         return self.write_context(new_content, message)
 
-    def get_history(
-        self, limit: int = 10, starting_after: str | None = None
-    ) -> dict[str, list | int | bool]:
+    def get_history(self, limit: int = 10, starting_after: str | None = None) -> HistoryResult:
         """Get commit history for branch.
 
         Args:
@@ -202,11 +227,13 @@ class GitContextManager:
 
         commits = []
         for c in commits_iter:
-            commits.append({
-                "sha": c.hexsha,
-                "message": c.message.strip(),
-                "timestamp": datetime.fromtimestamp(c.committed_date).isoformat(),
-            })
+            commits.append(
+                {
+                    "sha": c.hexsha,
+                    "message": c.message.strip(),
+                    "timestamp": datetime.fromtimestamp(c.committed_date).isoformat(),
+                }
+            )
 
         has_more = False
         if commits:
