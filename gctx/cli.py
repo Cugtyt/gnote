@@ -21,6 +21,7 @@ def cmd_init(args: argparse.Namespace) -> None:
     ConfigManager.GCTX_HOME.mkdir(parents=True, exist_ok=True)
     (ConfigManager.GCTX_HOME / "configs").mkdir(exist_ok=True)
     (ConfigManager.GCTX_HOME / "logs").mkdir(exist_ok=True)
+    (ConfigManager.GCTX_HOME / "vectors").mkdir(exist_ok=True)
 
     ConfigManager.initialize_default()
 

@@ -10,6 +10,7 @@ from gctx.config_manager import ConfigManager
 from gctx.git_manager import CommitInfo, GitContextManager
 from gctx.logger import BranchLogger
 from gctx.token_counter import TokenCounter
+from gctx.vector_manager import VectorManager
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,8 @@ def setup_mcp(
         logger.info("MCP tools setup complete")
 
     counter = TokenCounter(config.token_approach)
+
+    vector_mgr = VectorManager(branch, config)
 
     mcp = FastMCP("gctx")
 
@@ -446,6 +449,46 @@ organization and compression when token limits are approached.
                     )
             except Exception as e:
                 logger.error(f"Failed to search history: {e}")
+                return SearchResult(
+                    success=False,
+                    error=str(e),
+                )
+
+    @mcp.tool()
+    async def vector_search_context_history(
+        queries: list[str],
+    ) -> SearchResult:
+        """Search commit history by semantic similarity using vector embeddings.
+
+        Converts query sentences to vectors and finds commits with similar
+        content based on cosine similarity. Each query is searched independently
+        and results are merged and deduplicated.
+
+        Args:
+            queries: List of query sentences to search for
+
+        Returns:
+            SearchResult containing:
+            - success (bool): True if search succeeded
+            - commits (list[CommitInfo]): Semantically similar commits ranked by relevance
+            - total_matches (int): Number of matching commits found
+            - error (str): Error message if failed
+        """
+        with BranchLogger(branch) as logger:
+            logger.info(f"Tool called: vector_search_context_history (queries={queries})")
+
+            try:
+                results = await asyncio.to_thread(vector_mgr.search_similar, queries)
+
+                logger.info(f"Found {len(results)} matches")
+
+                return SearchResult(
+                    success=True,
+                    commits=results,
+                    total_matches=len(results),
+                )
+            except Exception as e:
+                logger.error(f"Vector search failed: {e}")
                 return SearchResult(
                     success=False,
                     error=str(e),

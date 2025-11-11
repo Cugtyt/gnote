@@ -5,9 +5,12 @@ description = "Simplified Git-based context management for LLM agents via MCP"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "faiss-cpu>=1.12.0",
     "gitpython>=3.1.45",
     "mcp>=1.21.0",
+    "numpy>=2.3.4",
     "pydantic>=2.12.4",
+    "sentence-transformers>=5.1.2",
 ]
 
 [project.scripts]
