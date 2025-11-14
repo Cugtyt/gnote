@@ -38,11 +38,11 @@ Write-Host "Command: gnote branch" -ForegroundColor Gray
 uv run gnote branch
 Write-Host ""
 
-# Test 5: Update context
-Write-Host "Test 5: Update context with initial content" -ForegroundColor Cyan
-Write-Host "Command: gnote update 'Initial context' --content '...'" -ForegroundColor Gray
+# Test 5: Update note
+Write-Host "Test 5: Update note with initial content" -ForegroundColor Cyan
+Write-Host "Command: gnote update 'Initial note' --content '...'" -ForegroundColor Gray
 $initialContent = @"
-# Project Context
+# Project Note
 
 ## Overview
 This is a test project for gnote - a Git-based context management system.
@@ -55,17 +55,17 @@ This is a test project for gnote - a Git-based context management system.
 ## Status
 Initial setup complete.
 "@
-$initialContent | uv run gnote update "Initial context"
+$initialContent | uv run gnote update "Initial note"
 Write-Host ""
 
-# Test 6: Read context
-Write-Host "Test 6: Read current context" -ForegroundColor Cyan
+# Test 6: Read note
+Write-Host "Test 6: Read current note" -ForegroundColor Cyan
 Write-Host "Command: gnote read" -ForegroundColor Gray
 uv run gnote read
 Write-Host ""
 
-# Test 7: Append to context
-Write-Host "Test 7: Append information to context" -ForegroundColor Cyan
+# Test 7: Append to note
+Write-Host "Test 7: Append information to note" -ForegroundColor Cyan
 Write-Host "Command: gnote append 'Add progress update' --text '...'" -ForegroundColor Gray
 uv run gnote append "Add progress update" --text @"
 
@@ -76,8 +76,8 @@ uv run gnote append "Add progress update" --text @"
 "@
 Write-Host ""
 
-# Test 8: Read updated context
-Write-Host "Test 8: Read updated context" -ForegroundColor Cyan
+# Test 8: Read updated note
+Write-Host "Test 8: Read updated note" -ForegroundColor Cyan
 Write-Host "Command: gnote read" -ForegroundColor Gray
 uv run gnote read
 Write-Host ""
@@ -124,13 +124,13 @@ Write-Host "Command: gnote config" -ForegroundColor Gray
 uv run gnote config
 Write-Host ""
 
-# Test 16: Update context on agent1 branch
-Write-Host "Test 16: Update context on agent1 branch" -ForegroundColor Cyan
-Write-Host "Command: gnote update 'Agent1 working context' --content '...'" -ForegroundColor Gray
-uv run gnote update "Agent1 working context" --content @"
-# Agent1 Context
+# Test 16: Update note on agent1 branch
+Write-Host "Test 16: Update note on agent1 branch" -ForegroundColor Cyan
+Write-Host "Command: gnote update 'Agent1 working note' --content '...'" -ForegroundColor Gray
+uv run gnote update "Agent1 working note" --content @"
+# Agent1 Note
 
-This is agent1's isolated context.
+This is agent1's isolated note.
 Working on specialized tasks with higher token limit (15000).
 "@
 Write-Host ""
@@ -154,8 +154,8 @@ Write-Host "Command: gnote branch checkout master" -ForegroundColor Gray
 uv run gnote branch checkout master
 Write-Host ""
 
-# Test 19: Verify master context unchanged
-Write-Host "Test 19: Verify master context is unchanged" -ForegroundColor Cyan
+# Test 19: Verify master note unchanged
+Write-Host "Test 19: Verify master note is unchanged" -ForegroundColor Cyan
 Write-Host "Command: gnote read" -ForegroundColor Gray
 uv run gnote read
 Write-Host ""
@@ -182,7 +182,7 @@ Write-Host ""
 Write-Host "Summary:" -ForegroundColor Yellow
 Write-Host "  ✓ Initialization and validation" -ForegroundColor Green
 Write-Host "  ✓ Configuration management (global + per-branch)" -ForegroundColor Green
-Write-Host "  ✓ Context operations (read, update, append)" -ForegroundColor Green
+Write-Host "  ✓ Note operations (read, update, append)" -ForegroundColor Green
 Write-Host "  ✓ Branch management (create, checkout, list)" -ForegroundColor Green
 Write-Host "  ✓ History and snapshots" -ForegroundColor Green
 Write-Host "  ✓ Multi-branch isolation verified" -ForegroundColor Green

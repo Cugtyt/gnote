@@ -73,10 +73,10 @@ async def test_mcp_server() -> None:
             print()
             print()
 
-            # Test 1: Read context
-            print("Test 1: Read current context")
+            # Test 1: Read note
+            print("Test 1: Read current note")
             print("-" * 40)
-            result = await session.call_tool("read_context", arguments={})
+            result = await session.call_tool("read_note", arguments={})
             assert isinstance(result.content[0], TextContent)
             content = result.content[0].text
             print("✓ Tool call successful")
@@ -93,30 +93,30 @@ async def test_mcp_server() -> None:
                 print(f"⚠ Config override may not have worked: token_limit={limit}")
             print()
 
-            # Test 2: Update context
-            print("Test 2: Update context with new content")
+            # Test 2: Update note
+            print("Test 2: Update note with new content")
             print("-" * 40)
-            new_content = """# MCP Test Context
+            new_content = """# MCP Test Note
 
 ## Test Information
-This context was created by the MCP client test script.
+This note was created by the MCP client test script.
 
 ## Features Being Tested
 - MCP server connection via stdio
-- read_context tool
-- update_context tool
-- append_to_context tool
-- get_context_history tool
+- read_note tool
+- update_note tool
+- append_to_note tool
+- get_note_history tool
 - get_snapshot tool
 
 ## Timestamp
 Testing MCP server functionality.
 """
             result = await session.call_tool(
-                "update_context",
+                "update_note",
                 arguments={
-                    "new_context": new_content,
-                    "commit_message": "MCP client test: Initial context",
+                    "new_note": new_content,
+                    "commit_message": "MCP client test: Initial note",
                 },
             )
             assert isinstance(result.content[0], TextContent)
@@ -124,7 +124,7 @@ Testing MCP server functionality.
             print(f"Result: {result.content[0].text[:200]}...")
             print()
 
-            # Test 3: Append to context
+            # Test 3: Append to note
             print("Test 3: Append additional information")
             print("-" * 40)
             append_text = """
@@ -134,7 +134,7 @@ Testing MCP server functionality.
 - stdio communication working correctly
 """
             result = await session.call_tool(
-                "append_to_context",
+                "append_to_note",
                 arguments={
                     "text": append_text,
                     "commit_message": "MCP client test: Add status update",
@@ -145,10 +145,10 @@ Testing MCP server functionality.
             print(f"Result: {result.content[0].text[:200]}...")
             print()
 
-            # Test 4: Read updated context
-            print("Test 4: Read updated context")
+            # Test 4: Read updated note
+            print("Test 4: Read updated note")
             print("-" * 40)
-            result = await session.call_tool("read_context", arguments={})
+            result = await session.call_tool("read_note", arguments={})
             assert isinstance(result.content[0], TextContent)
             content = result.content[0].text
             print("✓ Tool call successful")
@@ -158,10 +158,10 @@ Testing MCP server functionality.
             print("-" * 40)
             print()
 
-            # Test 5: Get context history
-            print("Test 5: Get context history (last 5 commits)")
+            # Test 5: Get note history
+            print("Test 5: Get note history (last 5 commits)")
             print("-" * 40)
-            result = await session.call_tool("get_context_history", arguments={"limit": 5})
+            result = await session.call_tool("get_note_history", arguments={"limit": 5})
             assert isinstance(result.content[0], TextContent)
             print("✓ Tool call successful")
             print(f"Result preview: {result.content[0].text[:300]}...")
@@ -170,7 +170,7 @@ Testing MCP server functionality.
             # Test 6: Test pagination
             print("Test 6: Test history pagination")
             print("-" * 40)
-            result_page1 = await session.call_tool("get_context_history", arguments={"limit": 2})
+            result_page1 = await session.call_tool("get_note_history", arguments={"limit": 2})
             assert isinstance(result_page1.content[0], TextContent)
             print("✓ Page 1 retrieved")
             print(f"Result: {result_page1.content[0].text[:200]}...")
@@ -184,10 +184,10 @@ Testing MCP server functionality.
             print("Summary:")
             print("  ✓ MCP server connection via stdio - Working")
             print("  ✓ usage-guide resource - Working")
-            print("  ✓ read_context tool - Working")
-            print("  ✓ update_context tool - Working")
-            print("  ✓ append_to_context tool - Working")
-            print("  ✓ get_context_history tool - Working")
+            print("  ✓ read_note tool - Working")
+            print("  ✓ update_note tool - Working")
+            print("  ✓ append_to_note tool - Working")
+            print("  ✓ get_note_history tool - Working")
             print("  ✓ MCP protocol communication - Working")
             print()
 

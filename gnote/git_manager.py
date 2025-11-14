@@ -6,6 +6,7 @@ from types import TracebackType
 
 from git import Repo
 from git.exc import InvalidGitRepositoryError
+
 from gnote.config_manager import ConfigManager
 from gnote.logger import BranchLogger
 
@@ -45,16 +46,16 @@ class Search:
     total_matches: int
 
 
-class GitContextManager:
-    """Manages context file within a Git repository.
+class GitNoteManager:
+    """Manages note file within a Git repository.
 
-    Can be used as a context manager for proper resource cleanup:
-        with GitContextManager("branch") as manager:
-            manager.write_context("content", "message")
+    Can be used as a note manager for proper resource cleanup:
+        with GitNoteManager("branch") as manager:
+            manager.write_note("content", "message")
     """
 
     def __init__(self, branch: str) -> None:
-        """Initialize Git context manager.
+        """Initialize Git note manager.
 
         Args:
             branch: Branch to operate on (required).
@@ -66,18 +67,18 @@ class GitContextManager:
         self.logger = BranchLogger(self.branch)
 
         self.repo_path = ConfigManager.REPO_PATH
-        self.context_file = ConfigManager.CONTEXT_FILE
-        self.context_file_path = self.repo_path / self.context_file
+        self.note_file = ConfigManager.CONTEXT_FILE
+        self.note_file_path = self.repo_path / self.note_file
 
         self.repo = self._initialize_repo()
 
         if branch not in [ref.name for ref in self.repo.heads]:
             self._create_branch_from_main(branch)
 
-        self.logger.info(f"Initialized GitContextManager for branch: {self.branch}")
+        self.logger.info(f"Initialized GitNoteManager for branch: {self.branch}")
 
-    def __enter__(self) -> "GitContextManager":
-        """Context manager entry."""
+    def __enter__(self) -> "GitNoteManager":
+        """Note manager entry."""
         return self
 
     def __exit__(
@@ -86,7 +87,7 @@ class GitContextManager:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        """Context manager exit - cleanup resources."""
+        """Note manager exit - cleanup resources."""
         self.logger.close()
 
         try:
@@ -122,12 +123,12 @@ class GitContextManager:
                 finally:
                     config.release()
 
-                if not self.context_file_path.exists():
-                    self.context_file_path.touch()
-                    self.logger.info(f"Created context file: {self.context_file}")
+                if not self.note_file_path.exists():
+                    self.note_file_path.touch()
+                    self.logger.info(f"Created note file: {self.note_file}")
 
-                repo.index.add([self.context_file])
-                repo.index.commit("Initialize gnote context")
+                repo.index.add([self.note_file])
+                repo.index.commit("Initialize gnote note")
                 self.logger.info("Initial commit created")
             except Exception as e:
                 self.logger.error(f"Failed to initialize repository: {e}")
@@ -178,31 +179,31 @@ class GitContextManager:
         """
         return self.branch
 
-    def read_context(self) -> str:
-        """Read current context content from branch HEAD.
+    def read_note(self) -> str:
+        """Read current note content from branch HEAD.
 
         Returns:
-            Content of context file as string
+            Content of note file as string
 
         Raises:
-            RuntimeError: If reading context fails
+            RuntimeError: If reading note fails
         """
         try:
-            self.logger.info(f"Reading context from branch '{self.branch}'")
+            self.logger.info(f"Reading note from branch '{self.branch}'")
             commit = self.repo.heads[self.branch].commit
-            blob = commit.tree / self.context_file
+            blob = commit.tree / self.note_file
             content = blob.data_stream.read().decode("utf-8")
-            self.logger.info(f"Read {len(content)} characters from context")
+            self.logger.info(f"Read {len(content)} characters from note")
             return content
         except Exception as e:
-            self.logger.error(f"Failed to read context: {e}")
-            raise RuntimeError(f"Failed to read context from branch '{self.branch}': {e}") from e
+            self.logger.error(f"Failed to read note: {e}")
+            raise RuntimeError(f"Failed to read note from branch '{self.branch}': {e}") from e
 
-    def write_context(self, content: str, message: str) -> str:
-        """Write new content to context file and commit.
+    def write_note(self, content: str, message: str) -> str:
+        """Write new content to note file and commit.
 
         Args:
-            content: New context content
+            content: New note content
             message: Commit message
 
         Returns:
@@ -212,13 +213,13 @@ class GitContextManager:
             RuntimeError: If Git commit fails
         """
         try:
-            self.logger.info(f"Writing context: {message}")
+            self.logger.info(f"Writing note: {message}")
             parent = self.repo.heads[self.branch].commit
 
-            self.context_file_path.write_text(content, encoding="utf-8")
+            self.note_file_path.write_text(content, encoding="utf-8")
 
             self.repo.index.reset(commit=parent)
-            self.repo.index.add([self.context_file])
+            self.repo.index.add([self.note_file])
             new_commit = self.repo.index.commit(message, parent_commits=[parent], head=False)
 
             self.repo.heads[self.branch].commit = new_commit
@@ -226,11 +227,11 @@ class GitContextManager:
             self.logger.info(f"Committed: {new_commit.hexsha[:8]}")
             return new_commit.hexsha
         except Exception as e:
-            self.logger.error(f"Failed to write context: {e}")
-            raise RuntimeError(f"Failed to write context: {e}") from e
+            self.logger.error(f"Failed to write note: {e}")
+            raise RuntimeError(f"Failed to write note: {e}") from e
 
-    def append_context(self, text: str, message: str) -> str:
-        """Append text to context file and commit.
+    def append_note(self, text: str, message: str) -> str:
+        """Append text to note file and commit.
 
         Args:
             text: Text to append
@@ -239,13 +240,13 @@ class GitContextManager:
         Returns:
             Git commit SHA hash
         """
-        self.logger.info(f"Appending to context: {message}")
-        current = self.read_context()
+        self.logger.info(f"Appending to note: {message}")
+        current = self.read_note()
 
         separator = "\n" if current and not current.endswith("\n") else ""
         new_content = current + separator + text
 
-        return self.write_context(new_content, message)
+        return self.write_note(new_content, message)
 
     def get_history(self, limit: int = 10, starting_after: str | None = None) -> History:
         """Get commit history for branch.
@@ -296,7 +297,7 @@ class GitContextManager:
         return History(commits=commits, total_commits=total, has_more=has_more)
 
     def get_snapshot(self, commit_sha: str) -> Snapshot:
-        """Get context content from specific commit.
+        """Get note content from specific commit.
 
         Args:
             commit_sha: Git commit SHA to retrieve
@@ -310,7 +311,7 @@ class GitContextManager:
         try:
             self.logger.info(f"Getting snapshot for commit {commit_sha[:8]}")
             commit = self.repo.commit(commit_sha)
-            blob = commit.tree / self.context_file
+            blob = commit.tree / self.note_file
             content: str = blob.data_stream.read().decode("utf-8")
             commit_message: str = str(commit.message).strip()
             timestamp: str = datetime.fromtimestamp(commit.committed_date).isoformat()
@@ -329,7 +330,7 @@ class GitContextManager:
         """Search commit history for keywords in messages or content.
 
         Searches through commit history and returns commits where any keyword
-        matches either the commit message or the context content.
+        matches either the commit message or the note content.
 
         Args:
             keywords: List of keywords to search for (case-insensitive)
@@ -360,7 +361,7 @@ class GitContextManager:
                 commit_message = str(commit.message).strip()
 
                 try:
-                    blob = commit.tree / self.context_file
+                    blob = commit.tree / self.note_file
                     content = blob.data_stream.read().decode("utf-8")
                 except Exception:
                     continue
@@ -417,11 +418,11 @@ class GitContextManager:
         Raises:
             ValueError: If branch already exists
         """
-        if name in GitContextManager.list_branches():
+        if name in GitNoteManager.list_branches():
             raise ValueError(f"Branch '{name}' already exists")
 
         if from_branch:
-            if from_branch not in GitContextManager.list_branches():
+            if from_branch not in GitNoteManager.list_branches():
                 raise ValueError(f"Source branch '{from_branch}' does not exist")
             source = self.repo.heads[from_branch]
         else:

@@ -11,7 +11,7 @@ class ConfigManager:
 
     GNOTE_HOME: Path = Path.home() / ".gnote"
     REPO_PATH: Path = GNOTE_HOME / "repo"
-    CONTEXT_FILE: str = "context"
+    CONTEXT_FILE: str = "note"
     GLOBAL_CONFIG_FILE: str = "global.config.json"
 
     @classmethod

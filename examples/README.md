@@ -15,7 +15,7 @@ pwsh examples/test_cli.ps1
 **What it tests:**
 - Initialization and validation
 - Configuration management (global and per-branch)
-- Context operations (read, update, append)
+- Note operations (read, update, append)
 - Branch management (create, checkout, list)
 - History and snapshots
 - Multi-branch isolation
@@ -31,11 +31,11 @@ uv run python examples/test_mcp.py
 ```
 
 **What it tests:**
-- `read_context()` - Read current context with metrics
-- `update_context()` - Replace context content
-- `append_to_context()` - Append to context
-- `get_context_history()` - Retrieve commit history with pagination
-- `get_snapshot()` - Get historical context
+- `read_note()` - Read current note with metrics
+- `update_note()` - Replace note content
+- `append_to_note()` - Append to note
+- `get_note_history()` - Retrieve commit history with pagination
+- `get_snapshot()` - Get historical notes
 - Token pressure monitoring workflow
 - Compression simulation
 
@@ -83,7 +83,7 @@ rm -rf ~/.gnote
 ## Expected Output
 
 ### CLI Test
-- Creates test context with multi-line content
+- Creates test note with multi-line content
 - Shows commit history
 - Demonstrates branch isolation
 - Verifies configuration overrides

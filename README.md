@@ -1,10 +1,10 @@
 # gnote - Git-based Context Management for LLM Agents
 
-**gnote** is a simplified Git-based context and memory management system for LLM agents using the Model Context Protocol (MCP). It provides tools for reading, updating, and navigating context history with token pressure monitoring.
+**gnote** is a simplified Git-based context and memory management system for LLM agents using the Model Context Protocol (MCP). It provides tools for reading, updating, and navigating note history with token pressure monitoring.
 
 ## Features
 
-- 🔄 **Git-based versioning** - Every context change is a Git commit with full history
+- 🔄 **Git-based versioning** - Every note change is a Git commit with full history
 - 🌿 **Multi-agent branching** - Different agents work on isolated branches with their own configs
 - 📊 **Token pressure monitoring** - Track token usage against configurable limits
 - 🔧 **Dual interface** - Both CLI and MCP server for flexible integration
@@ -29,10 +29,10 @@ uv pip install -e .
 # Initialize gnote with a branch name
 uv run gnote init main
 
-# Add some context
-echo "Project started" | uv run gnote update "Initial context"
+# Add some note
+echo "Project started" | uv run gnote update "Initial note"
 
-# Read context
+# Read note
 uv run gnote read
 
 # Append more information
@@ -64,7 +64,7 @@ This script demonstrates all 5 MCP tools with a complete workflow including toke
 pwsh examples/test_cli.ps1
 ```
 
-This script walks through all 20 CLI commands with colored output showing initialization, configuration, context operations, branch management, and multi-branch isolation.
+This script walks through all 20 CLI commands with colored output showing initialization, configuration, note operations, branch management, and multi-branch isolation.
 
 See [`examples/README.md`](examples/README.md) for detailed documentation.
 
@@ -76,7 +76,7 @@ See [`examples/README.md`](examples/README.md) for detailed documentation.
 ~/.gnote/
 ├── global.config.json   # Global default configuration
 ├── repo/                # Git repository
-│   └── context          # Context file (tracked by Git)
+│   └── note          # Note file (tracked by Git)
 ├── configs/             # Per-branch configuration overrides
 │   ├── master.json
 │   └── agent1.json
@@ -131,20 +131,20 @@ gnote branch create <name> [--from <branch>]  # Create new branch
 gnote branch checkout <name>  # Switch to branch
 ```
 
-### Context Operations
+### Note Operations
 ```bash
-gnote read                    # Read current context
-gnote update <message> [--content <text>]  # Update context
-gnote append <message> [--text <text>]     # Append to context
+gnote read                    # Read current note
+gnote update <message> [--content <text>]  # Update note
+gnote append <message> [--text <text>]     # Append to note
 gnote history [--limit N] [--starting-after SHA]  # View history
-gnote snapshot <sha>          # View context at specific commit
+gnote snapshot <sha>          # View note at specific commit
 gnote search <keyword...> [--limit N]      # Search history by keywords
 ```
 
 Examples:
 ```bash
 # Update with content flag
-gnote update "Compress context" --content "New compressed version"
+gnote update "Compress note" --content "New compressed version"
 
 # Update from stdin
 echo "New content" | gnote update "Updated via stdin"
@@ -236,7 +236,7 @@ To use gnote as an MCP server in VS Code with GitHub Copilot, configure it in yo
 
 3. **Choose your branch:**
    - Change `--branch vscode` to use a different branch
-   - Each branch has isolated context and configuration
+   - Each branch has isolated note and configuration
 
 4. **Optional config overrides:**
    - Add `--config-override` with `key=value` pairs to customize settings
@@ -245,29 +245,29 @@ To use gnote as an MCP server in VS Code with GitHub Copilot, configure it in yo
 5. **Restart VS Code** to load the MCP server
 
 Once configured, GitHub Copilot will have access to these tools:
-- `mcp_gnote-server_read_context` - Read current context
-- `mcp_gnote-server_update_context` - Replace context
-- `mcp_gnote-server_append_to_context` - Append to context
-- `mcp_gnote-server_get_context_history` - View history
-- `mcp_gnote-server_get_snapshot` - Get historical context
-- `mcp_gnote-server_search_context_history` - Search history by keywords
+- `mcp_gnote-server_read_note` - Read current note
+- `mcp_gnote-server_update_note` - Replace note
+- `mcp_gnote-server_append_to_note` - Append to note
+- `mcp_gnote-server_get_note_history` - View history
+- `mcp_gnote-server_get_snapshot` - Get historical note
+- `mcp_gnote-server_search_note_history` - Search history by keywords
 
 And this resource:
 - `gnote://usage-guide` - Usage guide for gnote tools
 
-**Tip:** Use different branches for different projects or coding sessions to keep context isolated.
+**Tip:** Use different branches for different projects or coding sessions to keep note isolated.
 
 The server exposes the following MCP tools and resources:
 
 ### MCP Resource
 
 #### `gnote://usage-guide`
-Provides comprehensive usage guidelines for gnote context management tools. MCP clients can read this resource to understand how to effectively use gnote for context management across sessions.
+Provides comprehensive usage guidelines for gnote context management tools. MCP clients can read this resource to understand how to effectively use gnote for note management across sessions.
 
 ### MCP Tools
 
-#### `read_context()`
-Read current context with token metrics.
+#### `read_note()`
+Read current note with token metrics.
 
 **Returns:**
 ```json
@@ -281,8 +281,8 @@ Read current context with token metrics.
 }
 ```
 
-#### `update_context(new_context: str, commit_message: str)`
-Replace context with new content.
+#### `update_note(new_note: str, commit_message: str)`
+Replace note with new content.
 
 **Returns:**
 ```json
@@ -295,8 +295,8 @@ Replace context with new content.
 }
 ```
 
-#### `append_to_context(text: str, commit_message: str)`
-Append text to context.
+#### `append_to_note(text: str, commit_message: str)`
+Append text to note.
 
 **Returns:**
 ```json
@@ -310,7 +310,7 @@ Append text to context.
 }
 ```
 
-#### `get_context_history(limit: int = 10, starting_after: str | None = None)`
+#### `get_note_history(limit: int = 10, starting_after: str | None = None)`
 Get paginated commit history.
 
 **Returns:**
@@ -320,7 +320,7 @@ Get paginated commit history.
   "commits": [
     {
       "sha": "abc123...",
-      "message": "Compress context",
+      "message": "Compress note",
       "timestamp": "2025-11-08T12:00:00"
     }
   ],
@@ -331,7 +331,7 @@ Get paginated commit history.
 ```
 
 #### `get_snapshot(commit_sha: str)`
-Retrieve context from a specific commit.
+Retrieve note from a specific commit.
 
 **Returns:**
 ```json
@@ -344,7 +344,7 @@ Retrieve context from a specific commit.
 }
 ```
 
-#### `search_context_history(keywords: list[str], limit: int = 100)`
+#### `search_note_history(keywords: list[str], limit: int = 100)`
 Search commit history for keywords in messages or content.
 
 **Returns:**
@@ -377,8 +377,8 @@ All operations are logged to `~/.gnote/logs/<branch>.log`:
 
 ```
 2025-11-08 12:00:00 - gnote.master - INFO - Setting up MCP tools for branch: master
-2025-11-08 12:00:05 - gnote.master - INFO - Tool called: read_context
-2025-11-08 12:00:05 - gnote.master - INFO - Read context: 1250 tokens
+2025-11-08 12:00:05 - gnote.master - INFO - Tool called: read_note
+2025-11-08 12:00:05 - gnote.master - INFO - Read note: 1250 tokens
 ```
 
 ## Development

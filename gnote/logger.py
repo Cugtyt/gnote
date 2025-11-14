@@ -31,11 +31,11 @@ class BranchLogger:
             self.logger.addHandler(handler)
 
     def __enter__(self) -> Self:
-        """Context manager entry."""
+        """Note manager entry."""
         return self
 
     def __exit__(self, *args: object) -> None:
-        """Context manager exit - close all handlers."""
+        """Note manager exit - close all handlers."""
         self.close()
 
     def close(self) -> None:

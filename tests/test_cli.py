@@ -3,6 +3,8 @@
 import argparse
 from pathlib import Path
 
+from pytest import CaptureFixture, MonkeyPatch
+
 from gnote.cli import (
     cmd_append,
     cmd_branch_create,
@@ -13,8 +15,7 @@ from gnote.cli import (
     cmd_update,
 )
 from gnote.config_manager import ConfigManager
-from gnote.git_manager import GitContextManager
-from pytest import CaptureFixture, MonkeyPatch
+from gnote.git_manager import GitNoteManager
 
 
 def test_cli_read(
@@ -24,8 +25,8 @@ def test_cli_read(
     monkeypatch.setattr(ConfigManager, "GNOTE_HOME", temp_gnote_home)
     monkeypatch.setattr(ConfigManager, "REPO_PATH", temp_gnote_home / "repo")
 
-    with GitContextManager("master") as manager:
-        manager.write_context("Test content", "Initial")
+    with GitNoteManager("master") as manager:
+        manager.write_note("Test content", "Initial")
 
     args = argparse.Namespace()
     cmd_read(args)
@@ -40,16 +41,16 @@ def test_cli_update(
     monkeypatch.setattr(ConfigManager, "GNOTE_HOME", temp_gnote_home)
     monkeypatch.setattr(ConfigManager, "REPO_PATH", temp_gnote_home / "repo")
 
-    with GitContextManager("master") as manager:
-        manager.write_context("Initial", "Initial")
+    with GitNoteManager("master") as manager:
+        manager.write_note("Initial", "Initial")
 
     args = argparse.Namespace(message="Update test", content="Updated content")
     cmd_update(args)
     captured = capsys.readouterr()
-    assert "✓ Updated context" in captured.out
+    assert "✓ Updated note" in captured.out
 
-    with GitContextManager("master") as manager:
-        content = manager.read_context()
+    with GitNoteManager("master") as manager:
+        content = manager.read_note()
         assert content == "Updated content"
 
 
@@ -60,16 +61,16 @@ def test_cli_append(
     monkeypatch.setattr(ConfigManager, "GNOTE_HOME", temp_gnote_home)
     monkeypatch.setattr(ConfigManager, "REPO_PATH", temp_gnote_home / "repo")
 
-    with GitContextManager("master") as manager:
-        manager.write_context("Initial", "Initial")
+    with GitNoteManager("master") as manager:
+        manager.write_note("Initial", "Initial")
 
     args = argparse.Namespace(message="Append test", text="Appended")
     cmd_append(args)
     captured = capsys.readouterr()
-    assert "✓ Appended to context" in captured.out
+    assert "✓ Appended to note" in captured.out
 
-    with GitContextManager("master") as manager:
-        content = manager.read_context()
+    with GitNoteManager("master") as manager:
+        content = manager.read_note()
         assert "Initial" in content
         assert "Appended" in content
 
@@ -81,10 +82,10 @@ def test_cli_history(
     monkeypatch.setattr(ConfigManager, "GNOTE_HOME", temp_gnote_home)
     monkeypatch.setattr(ConfigManager, "REPO_PATH", temp_gnote_home / "repo")
 
-    with GitContextManager("master") as manager:
-        manager.write_context("Content 1", "Commit 1")
-        manager.write_context("Content 2", "Commit 2")
-        manager.write_context("Content 3", "Commit 3")
+    with GitNoteManager("master") as manager:
+        manager.write_note("Content 1", "Commit 1")
+        manager.write_note("Content 2", "Commit 2")
+        manager.write_note("Content 3", "Commit 3")
 
     args = argparse.Namespace(limit=10, starting_after=None)
     cmd_history(args)
@@ -101,9 +102,9 @@ def test_cli_snapshot(
     monkeypatch.setattr(ConfigManager, "GNOTE_HOME", temp_gnote_home)
     monkeypatch.setattr(ConfigManager, "REPO_PATH", temp_gnote_home / "repo")
 
-    with GitContextManager("master") as manager:
-        sha = manager.write_context("Snapshot content", "Snapshot commit")
-        manager.write_context("Later content", "Later")
+    with GitNoteManager("master") as manager:
+        sha = manager.write_note("Snapshot content", "Snapshot commit")
+        manager.write_note("Later content", "Later")
 
     args = argparse.Namespace(sha=sha)
     cmd_snapshot(args)
@@ -119,11 +120,11 @@ def test_cli_branch_list(
     monkeypatch.setattr(ConfigManager, "GNOTE_HOME", temp_gnote_home)
     monkeypatch.setattr(ConfigManager, "REPO_PATH", temp_gnote_home / "repo")
 
-    with GitContextManager("master") as manager:
-        manager.write_context("Initial", "Init")
+    with GitNoteManager("master") as manager:
+        manager.write_note("Initial", "Init")
 
-    with GitContextManager("test-branch") as manager:
-        manager.write_context("Test", "Test")
+    with GitNoteManager("test-branch") as manager:
+        manager.write_note("Test", "Test")
 
     args = argparse.Namespace()
     cmd_branch_list(args)
@@ -139,14 +140,14 @@ def test_cli_branch_create(
     monkeypatch.setattr(ConfigManager, "GNOTE_HOME", temp_gnote_home)
     monkeypatch.setattr(ConfigManager, "REPO_PATH", temp_gnote_home / "repo")
 
-    with GitContextManager("master") as manager:
-        manager.write_context("Initial", "Init")
+    with GitNoteManager("master") as manager:
+        manager.write_note("Initial", "Init")
 
     args = argparse.Namespace(name="new-branch", from_branch=None)
     cmd_branch_create(args)
     captured = capsys.readouterr()
     assert "✓ Created branch 'new-branch'" in captured.out
 
-    with GitContextManager("new-branch") as manager:
-        content = manager.read_context()
+    with GitNoteManager("new-branch") as manager:
+        content = manager.read_note()
         assert "Initial" in content

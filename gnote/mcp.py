@@ -7,14 +7,14 @@ from mcp.server.fastmcp import FastMCP
 
 from gnote.config import GnoteConfig
 from gnote.config_manager import ConfigManager
-from gnote.git_manager import CommitInfo, GitContextManager
+from gnote.git_manager import CommitInfo
 from gnote.logger import BranchLogger
 from gnote.token_counter import TokenCounter
 
 
 @dataclass(frozen=True)
-class ReadContextResult:
-    """Result from reading context."""
+class ReadNoteResult:
+    """Result from reading note."""
 
     success: bool
     content: str = ""
@@ -25,8 +25,8 @@ class ReadContextResult:
 
 
 @dataclass(frozen=True)
-class UpdateContextResult:
-    """Result from updating context."""
+class UpdateNoteResult:
+    """Result from updating note."""
 
     success: bool
     commit_sha: str = ""
@@ -37,8 +37,8 @@ class UpdateContextResult:
 
 
 @dataclass(frozen=True)
-class AppendContextResult:
-    """Result from appending to context."""
+class AppendNoteResult:
+    """Result from appending to note."""
 
     success: bool
     commit_sha: str = ""
@@ -113,18 +113,18 @@ def setup_mcp(
 
     USAGE_GUIDE = """Follow this guidance to use gnote context management tools effectively.
 
-Actively use these tools to manage context across conversations with the user.
-These tools provide Git-based context versioning with token pressure monitoring.
-You can actively offload the conversation to gnote-managed context, allowing for better
+Actively use these tools to manage note across conversations with the user.
+These tools provide Git-based note versioning with token pressure monitoring.
+You can actively offload the conversation to gnote-managed note, allowing for better
 organization and compression when token limits are approached.
 
 **Core operations:**
-- `read_context()` - Restore project knowledge and check token metrics
-- `append_to_context(text, message)` - Incrementally add findings, decisions, or progress
-- `update_context(new_context, message)` - Compress, restructure, or replace entire context
-- `get_context_history(limit, starting_after)` - View past commits with pagination
+- `read_note()` - Restore project knowledge and check token metrics
+- `append_to_note(text, message)` - Incrementally add findings, decisions, or progress
+- `update_note(new_note, message)` - Compress, restructure, or replace entire note
+- `get_note_history(limit, starting_after)` - View past commits with pagination
 - `get_snapshot(commit_sha)` - Retrieve content from specific commits
-- `search_context_history(keywords, limit)` - Search commits by keywords
+- `search_note_history(keywords, limit)` - Search commits by keywords
 
 **Best practices:**
 - Always check `success` field; handle errors via `error` field
@@ -135,7 +135,7 @@ organization and compression when token limits are approached.
 
     @mcp.resource("gnote://usage-guide")
     async def get_usage_guide() -> str:
-        """Usage guide for gnote context management tools."""
+        """Usage guide for gnote note management tools."""
         return f"# Context Management with gnote\n\n{USAGE_GUIDE}"
 
     if enable_guidance_tool:
@@ -145,34 +145,34 @@ organization and compression when token limits are approached.
             pass
 
     @mcp.tool()
-    async def read_context() -> ReadContextResult:
-        """Read the current context content and token usage metrics.
+    async def read_note() -> ReadNoteResult:
+        """Read the current note content and token usage metrics.
 
-        Use this tool to check the current context state and token usage.
-        The tool returns the full context content along with token metrics
+        Use this tool to check the current note state and token usage.
+        The tool returns the full note content along with token metrics
         including current count, limit, and pressure percentage.
 
         Returns:
-            ReadContextResult containing:
+            ReadNoteResult containing:
             - success (bool): True if operation succeeded
-            - content (str): Current context file content
-            - token_count (int): Number of tokens in current context
+            - content (str): Current note file content
+            - token_count (int): Number of tokens in current note
             - token_limit (int): Configured maximum token limit
             - token_pressure_percentage (float): Percentage of limit used (0.0-1.0)
             - error (str): Error message if failed
         """
         with BranchLogger(branch) as logger:
-            logger.info("Tool called: read_context")
+            logger.info("Tool called: read_note")
 
             try:
-                with GitContextManager(branch) as manager:
-                    content = await asyncio.to_thread(manager.read_context)
+                with GitNoteManager(branch) as manager:
+                    content = await asyncio.to_thread(manager.read_note)
                     token_count = counter.count(content)
                     pressure = counter.calculate_pressure(token_count, config.token_limit)
 
-                    logger.info(f"Read context: {token_count} tokens")
+                    logger.info(f"Read note: {token_count} tokens")
 
-                    return ReadContextResult(
+                    return ReadNoteResult(
                         success=True,
                         content=content,
                         token_count=token_count,
@@ -180,19 +180,19 @@ organization and compression when token limits are approached.
                         token_pressure_percentage=pressure["token_pressure_percentage"],
                     )
             except Exception as e:
-                logger.error(f"Failed to read context: {e}")
-                return ReadContextResult(
+                logger.error(f"Failed to read note: {e}")
+                return ReadNoteResult(
                     success=False,
                     error=str(e),
                 )
 
     @mcp.tool()
-    async def update_context(new_context: str, commit_message: str) -> UpdateContextResult:
-        """Update the context file with new content and commit the change.
+    async def update_note(new_note: str, commit_message: str) -> UpdateNoteResult:
+        """Update the note file with new content and commit the change.
 
-        Use this tool when compressing context to reduce token usage, or when updating
-        context with new important information. The commit message should describe what
-        changed or why the update was made (e.g., "Compress context to reduce token
+        Use this tool when compressing note to reduce token usage, or when updating
+        note with new important information. The commit message should describe what
+        changed or why the update was made (e.g., "Compress note to reduce token
         usage" or "Add new project requirements").
 
         After updating, the tool returns metrics showing the new token count and how
@@ -200,11 +200,11 @@ organization and compression when token limits are approached.
         effective.
 
         Args:
-            new_context: The new context content to save
+            new_note: The new note content to save
             commit_message: Descriptive message for this update (required for Git history)
 
         Returns:
-            UpdateContextResult containing:
+            UpdateNoteResult containing:
             - success (bool): True if update succeeded
             - commit_sha (str): Git commit hash for this change
             - new_token_count (int): Token count after update
@@ -213,25 +213,25 @@ organization and compression when token limits are approached.
             - error (str): Error message if failed
         """
         with BranchLogger(branch) as logger:
-            logger.info(f"Tool called: update_context - {commit_message}")
+            logger.info(f"Tool called: update_note - {commit_message}")
 
             try:
-                with GitContextManager(branch) as manager:
-                    old_content = await asyncio.to_thread(manager.read_context)
+                with GitNoteManager(branch) as manager:
+                    old_content = await asyncio.to_thread(manager.read_note)
                     old_token_count = counter.count(old_content)
 
                     commit_sha = await asyncio.to_thread(
-                        manager.write_context, new_context, commit_message
+                        manager.write_note, new_note, commit_message
                     )
 
-                    new_token_count = counter.count(new_context)
+                    new_token_count = counter.count(new_note)
                     token_delta = new_token_count - old_token_count
 
                     pressure = counter.calculate_pressure(new_token_count, config.token_limit)
 
-                    logger.info(f"Updated context: {new_token_count} tokens (delta: {token_delta})")
+                    logger.info(f"Updated note: {new_token_count} tokens (delta: {token_delta})")
 
-                    return UpdateContextResult(
+                    return UpdateNoteResult(
                         success=True,
                         commit_sha=commit_sha,
                         new_token_count=new_token_count,
@@ -239,31 +239,31 @@ organization and compression when token limits are approached.
                         token_pressure_percentage=pressure["token_pressure_percentage"],
                     )
             except Exception as e:
-                logger.error(f"Failed to update context: {e}")
-                return UpdateContextResult(
+                logger.error(f"Failed to update note: {e}")
+                return UpdateNoteResult(
                     success=False,
                     error=str(e),
                 )
 
     @mcp.tool()
-    async def append_to_context(text: str, commit_message: str) -> AppendContextResult:
-        """Append text to the end of the context file and commit the change.
+    async def append_to_note(text: str, commit_message: str) -> AppendNoteResult:
+        """Append text to the end of the note file and commit the change.
 
-        Use this tool to add new information to context without rewriting everything.
+        Use this tool to add new information to note without rewriting everything.
         This is efficient for:
         - Adding timeline entries or logs
         - Appending new findings without modifying existing content
-        - Building up context incrementally
+        - Building up note incrementally
 
-        The text will be appended to the end of the current context with proper
-        line separation. Use update_context() for full rewrites or major restructuring.
+        The text will be appended to the end of the current note with proper
+        line separation. Use update_note() for full rewrites or major restructuring.
 
         Args:
-            text: Text to append to the context
+            text: Text to append to the note
             commit_message: Descriptive message for this append operation
 
         Returns:
-            AppendContextResult containing:
+            AppendNoteResult containing:
             - success (bool): True if append succeeded
             - commit_sha (str): Git commit hash for this change
             - new_token_count (int): Token count after append
@@ -272,29 +272,25 @@ organization and compression when token limits are approached.
             - error (str): Error message if failed
         """
         with BranchLogger(branch) as logger:
-            logger.info(f"Tool called: append_to_context - {commit_message}")
+            logger.info(f"Tool called: append_to_note - {commit_message}")
 
             try:
-                with GitContextManager(branch) as manager:
-                    old_content = await asyncio.to_thread(manager.read_context)
+                with GitNoteManager(branch) as manager:
+                    old_content = await asyncio.to_thread(manager.read_note)
                     old_token_count = counter.count(old_content)
 
-                    commit_sha = await asyncio.to_thread(
-                        manager.append_context, text, commit_message
-                    )
+                    commit_sha = await asyncio.to_thread(manager.append_note, text, commit_message)
 
-                    new_content = await asyncio.to_thread(manager.read_context)
+                    new_content = await asyncio.to_thread(manager.read_note)
                     new_token_count = counter.count(new_content)
                     token_delta = new_token_count - old_token_count
 
                     pressure = counter.calculate_pressure(new_token_count, config.token_limit)
 
-                    log_msg = (
-                        f"Appended to context: {new_token_count} tokens (delta: +{token_delta})"
-                    )
+                    log_msg = f"Appended to note: {new_token_count} tokens (delta: +{token_delta})"
                     logger.info(log_msg)
 
-                    return AppendContextResult(
+                    return AppendNoteResult(
                         success=True,
                         commit_sha=commit_sha,
                         new_token_count=new_token_count,
@@ -302,19 +298,17 @@ organization and compression when token limits are approached.
                         token_pressure_percentage=pressure["token_pressure_percentage"],
                     )
             except Exception as e:
-                logger.error(f"Failed to append to context: {e}")
-                return AppendContextResult(
+                logger.error(f"Failed to append to note: {e}")
+                return AppendNoteResult(
                     success=False,
                     error=str(e),
                 )
 
     @mcp.tool()
-    async def get_context_history(
-        limit: int = 10, starting_after: str | None = None
-    ) -> HistoryResult:
-        """Retrieve paginated commit history of context changes.
+    async def get_note_history(limit: int = 10, starting_after: str | None = None) -> HistoryResult:
+        """Retrieve paginated commit history of note changes.
 
-        Use this tool to explore past context states and find relevant historical
+        Use this tool to explore past note states and find relevant historical
         information. The history shows all commits with their messages, timestamps,
         allowing you to identify which past states might be useful to recall.
 
@@ -324,7 +318,7 @@ organization and compression when token limits are approached.
         - Chain calls using the last SHA from previous results to paginate
 
         After finding a relevant commit in the history, use get_snapshot() with the
-        commit SHA to retrieve the actual context content from that point in time.
+        commit SHA to retrieve the actual note content from that point in time.
 
         Args:
             limit: Number of commits to retrieve (default: 10)
@@ -340,13 +334,13 @@ organization and compression when token limits are approached.
             - error (str): Error message if failed
         """
         with BranchLogger(branch) as logger:
-            logger.info(f"Tool called: get_context_history (limit={limit})")
+            logger.info(f"Tool called: get_note_history (limit={limit})")
 
             try:
                 if limit <= 0:
                     raise ValueError("limit must be positive")
 
-                with GitContextManager(branch) as manager:
+                with GitNoteManager(branch) as manager:
                     result = await asyncio.to_thread(manager.get_history, limit, starting_after)
                     logger.info(f"Retrieved {len(result.commits)} commits")
 
@@ -365,26 +359,26 @@ organization and compression when token limits are approached.
 
     @mcp.tool()
     async def get_snapshot(commit_sha: str) -> SnapshotResult:
-        """Retrieve the context content from a specific historical commit.
+        """Retrieve the note content from a specific historical commit.
 
-        Use this tool after exploring history to recall specific past context states.
+        Use this tool after exploring history to recall specific past note states.
         This allows you to access historical information without modifying the current
-        context. The snapshot is read-only and does not change your working context.
+        note. The snapshot is read-only and does not change your working note.
 
         You can use information from historical snapshots to:
         - Recall facts or details that were removed during compression
-        - Compare current context with past states
+        - Compare current note with past states
         - Restore important information that was accidentally removed
 
-        To find commit SHAs, use get_context_history() first to browse the commit log.
+        To find commit SHAs, use get_note_history() first to browse the commit log.
 
         Args:
-            commit_sha: Git commit SHA hash to retrieve (from get_context_history)
+            commit_sha: Git commit SHA hash to retrieve (from get_note_history)
 
         Returns:
             SnapshotResult containing:
             - success (bool): True if snapshot retrieved successfully
-            - content (str): Context file content at that commit
+            - content (str): Note file content at that commit
             - commit_message (str): Commit message for that change
             - timestamp (str): ISO format timestamp when commit was made
             - error (str): Error message if success is False
@@ -397,7 +391,7 @@ organization and compression when token limits are approached.
                 if not all(c in "0123456789abcdefABCDEF" for c in commit_sha):
                     raise ValueError("commit_sha must be a valid hexadecimal hash")
 
-                with GitContextManager(branch) as manager:
+                with GitNoteManager(branch) as manager:
                     result = await asyncio.to_thread(manager.get_snapshot, commit_sha)
                     logger.info(f"Retrieved snapshot from {commit_sha[:8]}")
 
@@ -415,11 +409,11 @@ organization and compression when token limits are approached.
                 )
 
     @mcp.tool()
-    async def search_context_history(keywords: list[str], limit: int = 100) -> SearchResult:
+    async def search_note_history(keywords: list[str], limit: int = 100) -> SearchResult:
         """Search commit history for keywords in messages or content.
 
         Searches through commit history and returns commits where any keyword
-        matches either the commit message or the context content.
+        matches either the commit message or the note content.
 
         Args:
             keywords: List of keywords to search for (case-insensitive)
@@ -433,9 +427,9 @@ organization and compression when token limits are approached.
             - error (str): Error message if failed
         """
         with BranchLogger(branch) as logger:
-            logger.info(f"Tool called: search_context_history (keywords={keywords}, limit={limit})")
+            logger.info(f"Tool called: search_note_history (keywords={keywords}, limit={limit})")
             try:
-                with GitContextManager(branch) as manager:
+                with GitNoteManager(branch) as manager:
                     result = await asyncio.to_thread(manager.search_history, keywords, limit)
                     logger.info(f"Found {result.total_matches} matches")
 

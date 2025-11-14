@@ -8,7 +8,6 @@ from pydantic import ValidationError
 
 from gnote.config import GnoteConfig
 from gnote.config_manager import ConfigManager
-from gnote.git_manager import GitContextManager
 
 
 def cmd_init(args: argparse.Namespace) -> None:
@@ -25,8 +24,8 @@ def cmd_init(args: argparse.Namespace) -> None:
     ConfigManager.initialize_default()
 
     try:
-        GitContextManager(branch)
-        GitContextManager.checkout_branch(branch)
+        GitNoteManager(branch)
+        GitNoteManager.checkout_branch(branch)
         print("✓ gnote initialized at ~/.gnote")
         print("  - Repository created at ~/.gnote/repo")
         print(f"  - Default config created at ~/.gnote/{ConfigManager.GLOBAL_CONFIG_FILE}")
@@ -42,7 +41,7 @@ def cmd_config_show(args: argparse.Namespace) -> None:
     CLI: gnote config
     """
     try:
-        branch = GitContextManager.get_active_branch()
+        branch = GitNoteManager.get_active_branch()
         config = ConfigManager.load_for_branch(branch)
 
         print(f"# Configuration for branch: {branch}")
@@ -62,7 +61,7 @@ def cmd_config_set(args: argparse.Namespace) -> None:
         key: str = args.key
         raw_value: str = args.value
 
-        branch = GitContextManager.get_active_branch()
+        branch = GitNoteManager.get_active_branch()
         current_config = ConfigManager.load_for_branch(branch)
         overrides = ConfigManager.get_branch_override(branch)
 
@@ -111,7 +110,7 @@ def cmd_branch_show(args: argparse.Namespace) -> None:
     CLI: gnote branch
     """
     try:
-        branch = GitContextManager.get_active_branch()
+        branch = GitNoteManager.get_active_branch()
         print(branch)
     except Exception as e:
         print(f"✗ Failed to get current branch: {e}", file=sys.stderr)
@@ -124,8 +123,8 @@ def cmd_branch_list(args: argparse.Namespace) -> None:
     CLI: gnote branch list
     """
     try:
-        current = GitContextManager.get_active_branch()
-        branches = GitContextManager.list_branches()
+        current = GitNoteManager.get_active_branch()
+        branches = GitNoteManager.list_branches()
 
         for branch in branches:
             marker = "*" if branch == current else " "
@@ -145,8 +144,8 @@ def cmd_branch_create(args: argparse.Namespace) -> None:
         name: str = args.name
         from_branch: str | None = args.from_branch
 
-        current = GitContextManager.get_active_branch()
-        with GitContextManager(current) as manager:
+        current = GitNoteManager.get_active_branch()
+        with GitNoteManager(current) as manager:
             sha = manager.create_branch(name, from_branch)
             print(f"✓ Created branch '{name}' at {sha[:8]}")
 
@@ -163,7 +162,7 @@ def cmd_branch_checkout(args: argparse.Namespace) -> None:
     try:
         name: str = args.name
 
-        GitContextManager.checkout_branch(name)
+        GitNoteManager.checkout_branch(name)
         print(f"✓ Switched to branch '{name}'")
 
     except Exception as e:
@@ -172,23 +171,23 @@ def cmd_branch_checkout(args: argparse.Namespace) -> None:
 
 
 def cmd_read(args: argparse.Namespace) -> None:
-    """Read current context.
+    """Read current note.
 
     CLI: gnote read
     """
     try:
-        branch = GitContextManager.get_active_branch()
-        with GitContextManager(branch) as manager:
-            content = manager.read_context()
+        branch = GitNoteManager.get_active_branch()
+        with GitNoteManager(branch) as manager:
+            content = manager.read_note()
             print(content)
 
     except Exception as e:
-        print(f"✗ Failed to read context: {e}", file=sys.stderr)
+        print(f"✗ Failed to read note: {e}", file=sys.stderr)
         sys.exit(1)
 
 
 def cmd_update(args: argparse.Namespace) -> None:
-    """Update context with new content.
+    """Update note with new content.
 
     CLI: gnote update <message> --content <text>
           gnote update <message>  (reads from stdin)
@@ -197,24 +196,24 @@ def cmd_update(args: argparse.Namespace) -> None:
         message: str = args.message
         content_arg: str | None = args.content
 
-        branch = GitContextManager.get_active_branch()
-        with GitContextManager(branch) as manager:
+        branch = GitNoteManager.get_active_branch()
+        with GitNoteManager(branch) as manager:
             if content_arg:
                 content = content_arg
             else:
-                print("Enter new context (Ctrl+D or Ctrl+Z to finish):")
+                print("Enter new note (Ctrl+D or Ctrl+Z to finish):")
                 content = sys.stdin.read()
 
-            sha = manager.write_context(content, message)
-            print(f"✓ Updated context: {sha[:8]}")
+            sha = manager.write_note(content, message)
+            print(f"✓ Updated note: {sha[:8]}")
 
     except Exception as e:
-        print(f"✗ Failed to update context: {e}", file=sys.stderr)
+        print(f"✗ Failed to update note: {e}", file=sys.stderr)
         sys.exit(1)
 
 
 def cmd_append(args: argparse.Namespace) -> None:
-    """Append text to context.
+    """Append text to note.
 
     CLI: gnote append <message> --text <text>
           gnote append <message>  (reads from stdin)
@@ -223,19 +222,19 @@ def cmd_append(args: argparse.Namespace) -> None:
         message: str = args.message
         text_arg: str | None = args.text
 
-        branch = GitContextManager.get_active_branch()
-        with GitContextManager(branch) as manager:
+        branch = GitNoteManager.get_active_branch()
+        with GitNoteManager(branch) as manager:
             if text_arg:
                 text = text_arg
             else:
                 print("Enter text to append (Ctrl+D or Ctrl+Z to finish):")
                 text = sys.stdin.read()
 
-            sha = manager.append_context(text, message)
-            print(f"✓ Appended to context: {sha[:8]}")
+            sha = manager.append_note(text, message)
+            print(f"✓ Appended to note: {sha[:8]}")
 
     except Exception as e:
-        print(f"✗ Failed to append to context: {e}", file=sys.stderr)
+        print(f"✗ Failed to append to note: {e}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -248,8 +247,8 @@ def cmd_history(args: argparse.Namespace) -> None:
         limit: int = args.limit
         starting_after: str | None = args.starting_after
 
-        branch = GitContextManager.get_active_branch()
-        with GitContextManager(branch) as manager:
+        branch = GitNoteManager.get_active_branch()
+        with GitNoteManager(branch) as manager:
             result = manager.get_history(limit, starting_after)
 
             print(f"# History ({len(result.commits)} of {result.total_commits} commits)")
@@ -271,15 +270,15 @@ def cmd_history(args: argparse.Namespace) -> None:
 
 
 def cmd_snapshot(args: argparse.Namespace) -> None:
-    """Show snapshot of context at specific commit.
+    """Show snapshot of note at specific commit.
 
     CLI: gnote snapshot <sha>
     """
     try:
         sha: str = args.sha
 
-        branch = GitContextManager.get_active_branch()
-        with GitContextManager(branch) as manager:
+        branch = GitNoteManager.get_active_branch()
+        with GitNoteManager(branch) as manager:
             snapshot = manager.get_snapshot(sha)
 
             print(f"# Snapshot: {sha}")
@@ -302,8 +301,8 @@ def cmd_search(args: argparse.Namespace) -> None:
         keywords: list[str] = args.keywords
         limit: int = args.limit
 
-        branch = GitContextManager.get_active_branch()
-        with GitContextManager(branch) as manager:
+        branch = GitNoteManager.get_active_branch()
+        with GitNoteManager(branch) as manager:
             result = manager.search_history(keywords, limit)
 
             print(f"# Searched {limit} commits for: {', '.join(keywords)}")
@@ -350,7 +349,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
         else:
             print("✓ ~/.gnote/repo exists")
             try:
-                branch = GitContextManager.get_active_branch()
+                branch = GitNoteManager.get_active_branch()
                 print(f"✓ Current branch: {branch}")
             except Exception as e:
                 errors.append(f"Git repository error: {e}")
@@ -373,9 +372,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
 
 def main() -> None:
     """Main CLI entry point."""
-    parser = argparse.ArgumentParser(
-        description="gnote - Git-based context management for LLM agents"
-    )
+    parser = argparse.ArgumentParser(description="gnote - Git-based note management for LLM agents")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     parser_init = subparsers.add_parser("init", help="Initialize gnote")
@@ -411,15 +408,15 @@ def main() -> None:
     parser_branch_checkout.add_argument("name", help="Branch name")
     parser_branch_checkout.set_defaults(func=cmd_branch_checkout)
 
-    parser_read = subparsers.add_parser("read", help="Read current context")
+    parser_read = subparsers.add_parser("read", help="Read current note")
     parser_read.set_defaults(func=cmd_read)
 
-    parser_update = subparsers.add_parser("update", help="Update context")
+    parser_update = subparsers.add_parser("update", help="Update note")
     parser_update.add_argument("message", help="Commit message")
     parser_update.add_argument("--content", help="New content (or use stdin)")
     parser_update.set_defaults(func=cmd_update)
 
-    parser_append = subparsers.add_parser("append", help="Append to context")
+    parser_append = subparsers.add_parser("append", help="Append to note")
     parser_append.add_argument("message", help="Commit message")
     parser_append.add_argument("--text", help="Text to append (or use stdin)")
     parser_append.set_defaults(func=cmd_append)
