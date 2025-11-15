@@ -76,12 +76,18 @@ Config Override Examples:
                 enable_guidance_tool=args.enable_guidance_tool,
             )
             logger.info("MCP server initialized successfully")
+            logger.info("Starting MCP server (press Ctrl+C to stop)")
 
             mcp_server.run()
 
+        except KeyboardInterrupt:
+            logger.info("Received shutdown signal, stopping server...")
         except Exception as e:
-            logger.error(f"Server failed to start: {e}")
+            logger.error(f"MCP server crashed: {e}")
             raise
+        finally:
+            logger.info("gnote-server stopped")
+            logger.info("=" * 60)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import re
 import sys
 
 from pydantic import ValidationError
@@ -11,12 +12,38 @@ from gnote.config_manager import ConfigManager
 from gnote.git_manager import GitNoteManager
 
 
+def validate_branch_name(branch: str) -> str:
+    if not branch:
+        raise ValueError("Branch name cannot be empty")
+
+    if len(branch) > 255:
+        raise ValueError("Branch name too long (max 255 characters)")
+
+    if not re.match(r"^[a-zA-Z0-9._/-]+$", branch):
+        raise ValueError(
+            "Branch name must contain only letters, numbers, dots, "
+            "underscores, hyphens, and forward slashes"
+        )
+
+    if ".." in branch or branch.startswith("/") or branch.startswith("."):
+        raise ValueError("Branch name cannot contain '..' or start with '/' or '.'")
+
+    if branch.lower() in ("head",) and branch != branch.lower():
+        raise ValueError(f"Branch name '{branch}' conflicts with reserved Git names")
+
+    return branch
+
+
 def cmd_init(args: argparse.Namespace) -> None:
     """Initialize gnote structure.
 
     CLI: gnote init <branch>
     """
-    branch: str = args.branch
+    try:
+        branch: str = validate_branch_name(args.branch)
+    except ValueError as e:
+        print(f"✗ Invalid branch name: {e}", file=sys.stderr)
+        sys.exit(1)
 
     ConfigManager.GNOTE_HOME.mkdir(parents=True, exist_ok=True)
     (ConfigManager.GNOTE_HOME / "configs").mkdir(exist_ok=True)
@@ -142,8 +169,10 @@ def cmd_branch_create(args: argparse.Namespace) -> None:
     CLI: gnote branch create <name> [--from <branch>]
     """
     try:
-        name: str = args.name
+        name: str = validate_branch_name(args.name)
         from_branch: str | None = args.from_branch
+        if from_branch:
+            from_branch = validate_branch_name(from_branch)
 
         current = GitNoteManager.get_active_branch()
         with GitNoteManager(current) as manager:
@@ -161,7 +190,7 @@ def cmd_branch_checkout(args: argparse.Namespace) -> None:
     CLI: gnote branch checkout <name>
     """
     try:
-        name: str = args.name
+        name: str = validate_branch_name(args.name)
 
         GitNoteManager.checkout_branch(name)
         print(f"✓ Switched to branch '{name}'")
@@ -371,6 +400,58 @@ def cmd_validate(args: argparse.Namespace) -> None:
         print("\n✓ All checks passed!")
 
 
+def cmd_repair(args: argparse.Namespace) -> None:
+    """Verify and repair gnote repository integrity.
+
+    CLI: gnote repair
+    """
+    try:
+        issues_found = []
+
+        if not ConfigManager.GNOTE_HOME.exists():
+            issues_found.append("~/.gnote directory missing")
+            ConfigManager.GNOTE_HOME.mkdir(parents=True, exist_ok=True)
+            print("✓ Created ~/.gnote directory")
+
+        for subdir in ["configs", "logs"]:
+            path = ConfigManager.GNOTE_HOME / subdir
+            if not path.exists():
+                issues_found.append(f"~/.gnote/{subdir} missing")
+                path.mkdir(exist_ok=True)
+                print(f"✓ Created ~/.gnote/{subdir}")
+
+        if not ConfigManager.REPO_PATH.exists():
+            issues_found.append("Git repository missing")
+            print("✗ Git repository not found. Run 'gnote init <branch>' to initialize")
+            sys.exit(1)
+
+        try:
+            from git import Repo
+
+            repo = Repo(ConfigManager.REPO_PATH)
+
+            repo.git.fsck()
+            print("✓ Git repository integrity check passed")
+
+            branches = [ref.name for ref in repo.heads]
+            print(f"✓ Found {len(branches)} branches: {', '.join(branches)}")
+
+        except Exception as e:
+            issues_found.append(f"Git repository error: {e}")
+            print(f"✗ Git repository integrity check failed: {e}")
+            print("  Consider backing up ~/.gnote and running 'gnote init' again")
+            sys.exit(1)
+
+        if not issues_found:
+            print("\n✓ All integrity checks passed!")
+        else:
+            print(f"\n⚠ Fixed {len(issues_found)} issues")
+
+    except Exception as e:
+        print(f"✗ Repair failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="gnote - Git-based note management for LLM agents")
@@ -438,6 +519,9 @@ def main() -> None:
 
     parser_validate = subparsers.add_parser("validate", help="Validate gnote setup")
     parser_validate.set_defaults(func=cmd_validate)
+
+    parser_repair = subparsers.add_parser("repair", help="Verify and repair repository")
+    parser_repair.set_defaults(func=cmd_repair)
 
     args = parser.parse_args()
     if hasattr(args, "func"):

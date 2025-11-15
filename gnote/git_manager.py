@@ -67,7 +67,7 @@ class GitNoteManager:
         self.logger = BranchLogger(self.branch)
 
         self.repo_path = ConfigManager.REPO_PATH
-        self.note_file = ConfigManager.CONTEXT_FILE
+        self.note_file = ConfigManager.NOTE_FILE
         self.note_file_path = self.repo_path / self.note_file
 
         self.repo = self._initialize_repo()
@@ -92,8 +92,8 @@ class GitNoteManager:
 
         try:
             self.repo.close()
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning(f"Error closing Git repo (non-fatal): {e}")
 
     def _initialize_repo(self) -> Repo:
         """Initialize or open the Git repository.

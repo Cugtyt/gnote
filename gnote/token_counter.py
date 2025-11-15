@@ -1,4 +1,17 @@
-"""Token counting for context management."""
+"""Token counting for context management.
+
+Currently only supports the 'chardiv4' approach (characters divided by 4).
+This provides a reasonable approximation for most text, though actual token
+counts may vary by ±20% depending on the tokenizer used by the LLM.
+
+For production use with specific LLMs, consider implementing:
+- tiktoken for OpenAI models (GPT-3.5/4)
+- transformers tokenizers for other models
+- Custom token counter based on your specific LLM
+
+The chardiv4 approach is intentionally simple to avoid external dependencies
+and works well enough for token pressure monitoring.
+"""
 
 from gnote.config import TokenApproach
 
